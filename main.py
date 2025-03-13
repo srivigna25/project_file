@@ -32,41 +32,80 @@ def get_db_connection():
         print(f"Error while connecting to database MySQL: {e}")
         return None
 
+def authenticate_user(email: str, password: str):
+    connection = get_db_connection()
+    if not connection:
+        return None
+    try:
+        cursor = connection.cursor(dictionary=True)
+        cursor.execute("SELECT * FROM library.users WHERE email=%s AND password=%s", (email, password))
+        user = cursor.fetchone()
+        return user
+    except Error as e:
+        print(f"Error: {e}")
+        return None
+    finally:
+        cursor.close()
+        connection.close()
 
 @app.get("/",response_class=HTMLResponse)
 def get_registeration_form(request:Request):
     template = templates.get_template("login_form.html")
     return template.render(request=request)
 
+@app.get("/logout")
+def logout(response: Response):
+    response = RedirectResponse(url="/")
+    response.delete_cookie("session_token")  # Removing session token
+    return response
+
+
 @app.get("/register/form", response_class=HTMLResponse)
 def get_users(request: Request):
-    template = templates.get_template("registeration_form.html")
+    template = templates.get_template("registration_form.html")
     return template.render(request=request)
 
-@app.post("/registeration",response_class=HTMLResponse)
+
+@app.post("/registration",response_class=HTMLResponse)
 def new_users(
     request: Request,
     username:str =Form(...),
     email:str = Form(...),
-    password:str = Form(...),
-    category:str = Form(...),
-    other_category = Form(None)
+    password:str = Form(...)
 ):
     connection = get_db_connection()
     cursor = connection.cursor()
-    try: 
-        # if category =='other':
-        #     category = insert_new_users_category(other_category)
-        query = "INSERT INTO users(username,email,password,category) VALUES(%s , %s , %s , %s)" 
-        cursor.execute(query,(username,email,password,category))
+    try:
+        query = "INSERT INTO library.users(username, email, password) VALUES (%s, %s, %s)"
+        cursor.execute(query, (username, email, password))
         connection.commit()
         template = templates.get_template("success.html")
-        return template.render(request=request , username=username , email=email ,password=password , category=category )
-    except Error as e:
-        print(f"Error:{e}")
+        return template.render(request=request, username=username, email=email, password=password)
+    except mysql.connector.Error as e:
+        print(f"Error: {e}")
+        raise HTTPException(status_code=500, detail="Error inserting data into the database")
     finally:
         cursor.close()
         connection.close()
+
+
+@app.post("/login" ,response_class=HTMLResponse)
+def registeration_form(
+  request:Request,
+  username:str = Form(...),
+  password:str = Form(...),
+  category:str = Form(...),
+  other_category = Form(None)
+):
+  users = authenticate_user(username, password)
+  if users:
+    session_token = serializer.dumps(users['user_id'])  # Creating a session token
+    response = RedirectResponse(url="/login", status_code=303)
+    response.set_cookie(key="session_token", value=session_token, httponly=True, secure=True, samesite="Lax", max_age=3600)  # Storing session token in an HTTP-only, secure cookie
+    return response
+  template = templates.get_template("login_form.html")
+  return template.render(request=request, error="Invalid credentials!")
+
 
 def users_data_from_db(order="ASC"):
     connection = get_db_connection()
@@ -74,7 +113,7 @@ def users_data_from_db(order="ASC"):
         return {"message": "Database connection not done"}
     try:
         cur = connection.cursor(dictionary=True)
-        query = "SELECT * FROM library.users"
+        query = "SELECT * FROM library.users "
         cur.execute(query)
         results = cur.fetchall()
         return results

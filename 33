@@ -1,0 +1,11 @@
+
+        # # Check if user already exists
+        # cursor.execute("SELECT * FROM library.users WHERE username = %s AND email = %s AND password = %s", (username , email, password))
+        # existing_user = cursor.fetchone()
+
+        # if existing_user:
+        #     print("User already exists")
+        #     template = templates.get_template("template.html")
+        #     return template.render(request=request, username=username, password=password)
+        # else:
+        #     print("User does not exist, inserting into database")
