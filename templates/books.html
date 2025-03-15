@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>USERS</title>
+</head>
+<body>
+    <h1>Users Details</h1>
+    <table border="1">
+        <thead>
+            <tr>
+                <th>book_id</th>
+                <th>bookname</th>
+                <th>author</th>
+                <th>quantity</th>
+                <th>price</th>
+                <th>availability</th>
+            </tr>
+        </thead>
+        <tbody>
+            % for book in books:
+            <tr>
+                <td>${book['book_id']}</td>
+                <td>${book['bookname']}</td>
+                <td>${book['author']}</td>
+                <td>${book['quantity']}</td>
+                <td>${book['price']}</td>
+                <td>${book['availability']}</td>
+            </tr>
+            % endfor
+        </tbody>
+    </table>
+</body>
+</html>
