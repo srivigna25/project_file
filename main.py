@@ -32,13 +32,13 @@ def get_db_connection():
         print(f"Error while connecting to database MySQL: {e}")
         return None
 
-def authenticate_user(email: str, password: str):
+def authenticate_user(email: str, password: str , user_type:str):
     connection = get_db_connection()
     if not connection:
         return None
     try:
         cursor = connection.cursor(dictionary=True)
-        cursor.execute("SELECT * FROM library.users WHERE email=%s AND password=%s", (email, password))
+        cursor.execute("SELECT * FROM library.users WHERE email=%s AND password=%s AND user_type=%s" ,(email, password,user_type))
         user = cursor.fetchone()
         return user
     except Error as e:
@@ -92,26 +92,29 @@ def get_registeration_form(request:Request):
     return template.render(request=request, categories=categories)
 
 
-@app.post("/login" ,response_class=HTMLResponse)
+
+
+@app.post("/login", response_class=HTMLResponse)
 def login_form(
-  request:Request,
-  email:str = Form(...),
-  password:str = Form(...),
-  category: str = Form(...),
-  other_category: str = Form(None)
+    request: Request,
+    email: str = Form(...),
+    password: str = Form(...),
+    category: str = Form(...),
+    other_category: str = Form(None)
 ):
     if category == "other" and other_category:
         new_category_id = insert_new_movie_category(other_category)
-        category = new_category_id
+        category = new_category_id  # Correcting category assignment
 
-    users = authenticate_user(email, password)
+    users = authenticate_user(email, password, category)  # Corrected variable usage
     if users:
-        session_token = serializer.dumps(users['user_id'])  # Creating a session token
+        session_token = serializer.dumps(users['user_id'])
         response = RedirectResponse(url="/bookslist", status_code=303)
-        response.set_cookie(key="session_token", value=session_token, httponly=True, secure=True, samesite="Lax", max_age=3600)  # Storing session token in an HTTP-only, secure cookie
+        response.set_cookie( key="session_token", value=session_token, httponly=True,secure=True, samesite="Lax", max_age=3600)
         return response
     template = templates.get_template("login_form.html")
     return template.render(request=request, error="Invalid credentials!")
+
 
 @app.get("/logout")
 def logout(response: Response):
@@ -144,13 +147,12 @@ def fetch_user_categories(order="ASC"):
     connection = get_db_connection()
     if not connection:
         return {"message": "Database connection not done"}
-
     try:
         cur = connection.cursor(dictionary=True)
-        query = f"select * from library.categories ORDER by id {order}"
+        query = f"SELECT * FROM library.categories ORDER BY id {order}"
         cur.execute(query)
         results = cur.fetchall()
-        return results
+        return results 
     except Error as e:
         print(f"Error fetching categories: {e}")
         return []
@@ -160,15 +162,16 @@ def fetch_user_categories(order="ASC"):
             connection.close()
 
 
+
 #To insert the new category
-def insert_new_movie_category(user_type: str):
+def insert_new_movie_category(category: str):
   connection = get_db_connection()
   if not connection:
     return {"message": "Database connection not done"}  
   try:
     cursor = connection.cursor()
-    query = "INSERT INTO library.categories(user_type) VALUES(%s)"
-    cursor.execute(query, (user_type,))
+    query = "INSERT INTO library.categories(category) VALUES(%s)"
+    cursor.execute(query, (category,))
     connection.commit()
     lastid = cursor.lastrowid
     return lastid
@@ -235,7 +238,7 @@ def users_data_from_db(order="ASC"):
         return {"message": "Database connection not done"}
     try:
         cur = connection.cursor(dictionary=True)
-        query = "SELECT users.user_id , users.username , users.email , users.password , categories.user_type as user_type FROM library.users INNER JOIN library.categories ON library.users.user_type = library.categories.id"
+        query = "SELECT users.user_id , users.username , users.email , users.password , categories.category as user_type FROM library.users INNER JOIN library.categories ON library.users.user_type = library.categories.id"
         cur.execute(query)
         results = cur.fetchall()
         return results
