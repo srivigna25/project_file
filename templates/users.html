@@ -1,30 +1,29 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>USERS</title>
+    <title>Users Details</title>
 </head>
 <body>
     <h1>Users Details</h1>
     <table border="1">
         <thead>
             <tr>
-                <th>user_id</th>
-                <th>username</th>
-                <th>email</th>
-                <th>password</th>
-                <th>user_type</th>
+                <th>User ID</th>
+                <th>Username</th>
+                <th>Email</th>
+                <th>Password</th>
+                <th>User Type</th>
             </tr>
         </thead>
         <tbody>
             % for user in users:
             <tr>
-                <td>${user['user_id']}</td>
-                <td>${user['username']}</td>
-                <td>${user['email']}</td>
-                <td>${user['password']}</td>
-                <td>${user['user_type']}</td>
+                <td>${user.get('user_id', 'N/A')}</td>
+                <td>${user.get('username', 'N/A')}</td>
+                <td>${user.get('email', 'N/A')}</td>
+                <td>${user.get('password', 'N/A')}</td>
+                <td>${user.get('user_type', 'N/A')}</td>
             </tr>
             % endfor
         </tbody>
