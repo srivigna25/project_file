@@ -21,46 +21,44 @@
         .other_category_wrapper {
             display: none;
         }
+
         .other_category_wrapper.show {
             display: block;
         }
     </style>
 
     <script>
-        function toggleOtherCategory() {
-            let categorySelect = document.getElementById("category");
-            let otherCategoryDiv = document.getElementById("other_category_wrapper");
-
-            if (categorySelect.value === "other") {
-                otherCategoryDiv.style.display = "block";
-            } else {
-                otherCategoryDiv.style.display = "none";
-            }
+    function toggleOtherCategory() {
+        var categoryDropdown = document.getElementById('category');
+        var otherCategoryWrapper = document.getElementById('other_category_wrapper');
+        
+        if (categoryDropdown.value === 'Other') {
+            otherCategoryWrapper.style.display = 'block';
+        } else {
+            otherCategoryWrapper.style.display = 'none';
         }
+    }
     </script>
 </head>
 <body>
     <h3>Login form:</h3>
-    <form action="${'/login' + str(user['id']) if user else '/login'}" method="post">
+    <form action="/login" method="post">
         <input type="text" id="email" name="email" placeholder="Enter your email" required><br><br>
         <input type="password" id="password" name="password" placeholder="Password" required><br><br>
-        
+    
         <label for="category">Category:</label>
-        <div>If you don't see your category, please select "Other".</div>
         <select id="category" name="category" required onchange="toggleOtherCategory()">
-            % for cat in categories:
-                <option value="${cat['id']}" ${'selected' if user and cat['id'] == user['category'] else ''}>
-                    ${cat['user_type']}
-                </option>
+            % for category in categories:
+            <option value="${category['id']}">${category['category']}</option>
             % endfor
             <option value="other">Other</option>
         </select><br><br>
-
-        <div id="other_category_wrapper" class="other_category_wrapper">
+    
+        <div id="other_category_wrapper" style="display:none;">
             <input type="text" id="other_category" name="other_category" placeholder="Enter other category">
         </div>
-
-        <button>Login</button>
+    
+        <button type="submit">Login</button>
     </form>
 </body>
 </html>
