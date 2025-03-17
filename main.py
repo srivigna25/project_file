@@ -33,8 +33,9 @@ def get_db_connection():
         return None
 
 def authenticate_user(email: str, password: str , user_type:str):
-    connection = get_db_connection()
+    connection = get_db_connection()   
     if not connection:
+        print("Database connection failed")
         return None
     try:
         cursor = connection.cursor(dictionary=True)
@@ -86,8 +87,10 @@ def movies_page(request: Request):
     return template.render(request=request, users=users)
 
 @app.get("/",response_class=HTMLResponse)
-def get_registeration_form(request:Request):
+def get_login_form(request:Request):
     categories = fetch_user_categories()
+    if isinstance(categories, dict) and "message" in categories:
+        categories = [] # Ensures empty categories if fetching fails
     template = templates.get_template("login_form.html")
     return template.render(request=request, categories=categories)
 
@@ -102,6 +105,7 @@ def login_form(
     category: str = Form(...),
     other_category: str = Form(None)
 ):
+    
     if category == "other" and other_category:
         new_category_id = insert_new_movie_category(other_category)
         category = new_category_id  # Correcting category assignment
@@ -112,8 +116,8 @@ def login_form(
         response = RedirectResponse(url="/bookslist", status_code=303)
         response.set_cookie( key="session_token", value=session_token, httponly=True,secure=True, samesite="Lax", max_age=3600)
         return response
-    template = templates.get_template("login_form.html")
-    return template.render(request=request, error="Invalid credentials!")
+    return RedirectResponse(url="/", status_code=303)
+    
 
 
 @app.get("/logout")
@@ -205,9 +209,8 @@ def number_of_books(
         connection.commit()
         template = templates.get_template("books_success.html")
         return template.render(request=request,bookname=bookname , author=author , quantity=quantity , price=price , availability=availability )
-    except mysql.connector.Error as e:
+    except Error as e:
         print(f"Error: {e}")
-        raise HTTPException(status_code=500, detail="Error inserting data into the database")
     finally:
         cursor.close()
         connection.close()
