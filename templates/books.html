@@ -7,7 +7,7 @@
 </head>
 <body>
     <h1>Users Details</h1>
-    <a href="/">Refresh</a> <a href="">Add New Movie </a>
+    <a href="/">Refresh</a> <a href="/books/new">Add New Book </a>
     <table border="1">
         <thead>
             <tr>
@@ -29,9 +29,14 @@
                 <td>${book['price']}</td>
                 <td>${book['availability']}</td>
                 <td>
-                    <a href="">Edit</a>
-                    <form action="" method="post" style="display:inline;">
+                    
+                    <a href="/books/edit/${book['book_id']}">Edit</a>
+                   
+                    <form action="/books/delete/${book['book_id']}" method="post" style="display:inline;">
                         <button type="submit">Delete</button>
+                    </form>
+                    <form action="/books/borrow/${book['book_id']}" method="post" style="display:inline;">
+                        <button type="submit">Borrow</button>
                     </form>
                 </td>
             </tr>

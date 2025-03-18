@@ -224,9 +224,6 @@ def number_of_books(
     price:str = Form(...),
     availability:str = Form(...)
 ):
-     # Check if the user is an admin
-    if not is_admin_user(request):
-        raise HTTPException(status_code=403, detail="Permission denied. Only admins can delete books.")    
     connection = get_db_connection()
     cursor = connection.cursor()
     try:
@@ -261,23 +258,46 @@ def get_current_user(request: Request):
     except:
         return None
 
-# Frontend route to show movie form with existing data
 
+
+def is_admin_user(request: Request):
+    user_id = get_current_user(request)
+    if not user_id:
+        return False
+    
+    connection = get_db_connection()
+    cursor = connection.cursor(dictionary=True)
+    try:
+        cursor.execute("SELECT categories.category FROM library.users "
+                       "INNER JOIN library.categories ON library.users.user_type = library.categories.id "
+                       "WHERE users.user_id = %s", (user_id,))
+        user = cursor.fetchone()
+        return user and user['category'].strip().lower() == 'admin'
+    finally:
+        cursor.close()
+        connection.close()
+
+
+# Frontend route to show movie form with existing data
 @app.get("/books/edit/{book_id}", response_class=HTMLResponse)
 def edit_book_form(request: Request, book_id: int):
+    if not is_admin_user(request):
+        raise HTTPException(status_code=403, detail="Permission denied. Only admins can edit book details.")
+    
     connection = get_db_connection()
     if not connection:
         raise HTTPException(status_code=500, detail="Database connection error")
+    
     cursor = connection.cursor(dictionary=True)
     try:
-        cursor.execute("SELECT * FROM library.books WHERE book_id = %s", (book_id,))
+        query= f"SELECT * FROM library.books WHERE book_id = {book_id}"
+        cursor.execute(query)
         book = cursor.fetchone()
         categories_data = fetch_user_categories()
         template = templates.get_template("books_form.html")
         return template.render(request=request, book=book, categories=categories_data)
     except Error as e:
-        print(f"Error fetching book data: {e}")
-        raise HTTPException(status_code=500, detail="Error fetching book data")
+        print(f"Error: {e}")
     finally:
         cursor.close()
         connection.close()
@@ -293,7 +313,6 @@ async def borrow_book(book_id: int):
     try:
         cursor.execute("SELECT quantity FROM library.books WHERE book_id = %s", (book_id,))
         book = cursor.fetchone()
-
         if not book:
             raise HTTPException(status_code=404, detail="Book not found")
 
@@ -311,18 +330,20 @@ async def borrow_book(book_id: int):
         cursor.close()
         connection.close()
 
-
         
 
 # Only admins can delete books
 @app.post("/books/delete/{book_id}", response_class=HTMLResponse)
 async def delete_book(book_id: int, request: Request):
+    if not is_admin_user(request):
+        raise HTTPException(status_code=403, detail="Permission denied. Only admins can edit book details.")
+    
     connection = get_db_connection()
     cursor = connection.cursor()
     try:
         cursor.execute("DELETE FROM library.books WHERE book_id = %s", (book_id,))
         connection.commit()
-        return RedirectResponse(url="/bookslist", status_code=303)
+        return RedirectResponse(url="/", status_code=303)
     except Error as e:
         print(f"Error deleting book: {e}")
         raise HTTPException(status_code=500, detail="Error deleting the book.")
