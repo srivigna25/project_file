@@ -153,7 +153,7 @@ def login_form(
     users = authenticate_user(email, password, category)  # Corrected variable usage
     if users:
         session_token = serializer.dumps(users['user_id'])
-        response = RedirectResponse(url="/bookslist", status_code=303)
+        response = RedirectResponse(url="/books/details", status_code=303)
         response.set_cookie( key="session_token", value=session_token, httponly=True,secure=True, samesite="Lax", max_age=3600)
         return response
     return RedirectResponse(url="/", status_code=303)
@@ -211,6 +211,8 @@ def insert_new_movie_category(category: str):
 # Frontend route to show form for creating data
 @app.get("/books/new", response_class=HTMLResponse)
 def show_books_form(request: Request):
+    if not is_admin_user(request):
+        raise HTTPException(status_code=403, detail="Permission denied. Only admins can add new books.")
     categories_data = fetch_user_categories()
     template = templates.get_template("books_form.html")
     return template.render(request=request, categories=categories_data)
@@ -224,6 +226,8 @@ def number_of_books(
     price:str = Form(...),
     availability:str = Form(...)
 ):
+    if not is_admin_user(request):
+        raise HTTPException(status_code=403, detail="Permission denied. Only admins can add new books.")
     connection = get_db_connection()
     cursor = connection.cursor()
     try:
@@ -242,8 +246,10 @@ def number_of_books(
 @app.get("/bookslist", response_class=HTMLResponse)
 def users_page(request: Request):
     user_id = get_current_user(request)
-    if not user_id:
-        return RedirectResponse(url="/")
+    # if not is_admin_user(request):
+    #     raise HTTPException(status_code=403, detail="Permission denied. Only admins can add new books.")
+    # # if not user_id:
+    # #     return RedirectResponse(url="/")
     books = fetch_books_data_from_db()
     template = templates.get_template("books.html")
     return template.render(request=request, books=books)
@@ -277,6 +283,23 @@ def is_admin_user(request: Request):
         cursor.close()
         connection.close()
 
+def is_user_user(request: Request):
+    user_id = get_current_user(request)
+    if not user_id:
+        return False
+    
+    connection = get_db_connection()
+    cursor = connection.cursor(dictionary=True)
+    try:
+        cursor.execute("SELECT categories.category FROM library.users "
+                       "INNER JOIN library.categories ON library.users.user_type = library.categories.id "
+                       "WHERE users.user_id = %s", (user_id,))
+        user = cursor.fetchone()
+        return user and user['category'].strip().lower() == 'user'
+    finally:
+        cursor.close()
+        connection.close()
+
 
 # Frontend route to show movie form with existing data
 @app.get("/books/edit/{book_id}", response_class=HTMLResponse)
@@ -305,9 +328,19 @@ def edit_book_form(request: Request, book_id: int):
 
 
 
+@app.get("/books/details", response_class=HTMLResponse)
+def show_book_details(request: Request):
+    books = fetch_books_data_from_db()  # Assuming this fetches book data
+    template = templates.get_template("details_book.html")
+    return template.render(request=request, books=books)
+
+
 
 @app.post("/books/borrow/{book_id}", response_class=HTMLResponse)
-async def borrow_book(book_id: int):
+async def borrow_book(request:Request ,book_id: int):
+    if not is_user_user(request):
+        raise HTTPException(status_code=403, detail="Permission denied. Only users can edit book details.")
+    
     connection = get_db_connection()
     cursor = connection.cursor(dictionary=True)
     try:
