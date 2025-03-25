@@ -148,13 +148,20 @@ def login_form(
     
     if category == "other" and other_category:
         new_category_id = insert_new_movie_category(other_category)
-        category = new_category_id  # Correcting category assignment
+        category = new_category_id  # Ensure category gets updated correctly
 
-    users = authenticate_user(email, password, category)  # Corrected variable usage
-    if users:
-        session_token = serializer.dumps(users['user_id'])
-        response = RedirectResponse(url="/books/details", status_code=303)
-        response.set_cookie( key="session_token", value=session_token, httponly=True,secure=True, samesite="Lax", max_age=3600)
+    users = authenticate_user(email, password, category)  # Ensure this function returns expected data
+
+    if users and isinstance(users, dict) and 'user_type' in users:
+        session_token = serializer.dumps(users.get('user_id', ''))
+        user_type = users.get("user_type", "").strip().lower()
+        print(f"DEBUG: User type is '{user_type}'")
+
+        response = RedirectResponse(
+            url="/bookslist" if user_type == "admin" or user_type == "1"  else "/books/details",
+            status_code=303
+        )
+        response.set_cookie(key="session_token", value=session_token, httponly=True, secure=True)
         return response
     return RedirectResponse(url="/", status_code=303)
     
@@ -167,19 +174,22 @@ def logout(response: Response):
     return response
 
 
-
-def fetch_books_data_from_db(order="ASC"):
+def fetch_books_data_from_db(search=None, order="ASC"):
     connection = get_db_connection()
     if not connection:
         return {"message": "Database connection not done"}
     try:
         cur = connection.cursor(dictionary=True)
-        query = "SELECT * FROM library.books"
-        cur.execute(query)
+        if search:
+            query = "SELECT * FROM library.books WHERE bookname LIKE %s OR author LIKE %s"
+            cur.execute(query, (f"%{search}%", f"%{search}%"))
+        else:
+            query = "SELECT * FROM library.books"
+            cur.execute(query)
         results = cur.fetchall()
         return results
     except Error as e:
-        print(f"Error fetching categories: {e}")
+        print(f"Error fetching books: {e}")
         return []
     finally:
         if connection.is_connected():
@@ -209,6 +219,7 @@ def insert_new_movie_category(category: str):
       connection.close()            
 
 # Frontend route to show form for creating data
+# Frontend route to show form for creating data
 @app.get("/books/new", response_class=HTMLResponse)
 def show_books_form(request: Request):
     if not is_admin_user(request):
@@ -216,6 +227,7 @@ def show_books_form(request: Request):
     categories_data = fetch_user_categories()
     template = templates.get_template("books_form.html")
     return template.render(request=request, categories=categories_data)
+
 
 @app.post("/books" , response_class=HTMLResponse)
 def number_of_books(
@@ -227,7 +239,7 @@ def number_of_books(
     availability:str = Form(...)
 ):
     if not is_admin_user(request):
-        raise HTTPException(status_code=403, detail="Permission denied. Only admins can add new books.")
+        raise HTTPException(status_code=403, detail="Permission denied. Only admins can add new books.") 
     connection = get_db_connection()
     cursor = connection.cursor()
     try:
@@ -244,13 +256,9 @@ def number_of_books(
 
 
 @app.get("/bookslist", response_class=HTMLResponse)
-def users_page(request: Request):
+def users_page(request: Request,search:str = None):
     user_id = get_current_user(request)
-    # if not is_admin_user(request):
-    #     raise HTTPException(status_code=403, detail="Permission denied. Only admins can add new books.")
-    # # if not user_id:
-    # #     return RedirectResponse(url="/")
-    books = fetch_books_data_from_db()
+    books = fetch_books_data_from_db(search)
     template = templates.get_template("books.html")
     return template.render(request=request, books=books)
 
@@ -286,8 +294,7 @@ def is_admin_user(request: Request):
 def is_user_user(request: Request):
     user_id = get_current_user(request)
     if not user_id:
-        return False
-    
+        return False    
     connection = get_db_connection()
     cursor = connection.cursor(dictionary=True)
     try:
@@ -306,19 +313,15 @@ def is_user_user(request: Request):
 def edit_book_form(request: Request, book_id: int):
     if not is_admin_user(request):
         raise HTTPException(status_code=403, detail="Permission denied. Only admins can edit book details.")
-    
     connection = get_db_connection()
-    if not connection:
-        raise HTTPException(status_code=500, detail="Database connection error")
-    
     cursor = connection.cursor(dictionary=True)
     try:
-        query= f"SELECT * FROM library.books WHERE book_id = {book_id}"
-        cursor.execute(query)
-        book = cursor.fetchone()
-        categories_data = fetch_user_categories()
-        template = templates.get_template("books_form.html")
-        return template.render(request=request, book=book, categories=categories_data)
+      query = f"SELECT * from library.books WHERE book_id={book_id}"
+      cursor.execute(query)
+      book = cursor.fetchone()
+      categoriesData = fetch_user_categories()
+      template = templates.get_template("books_form.html")
+      return template.render(request=request, book=book ,categories=categoriesData)
     except Error as e:
         print(f"Error: {e}")
     finally:
@@ -326,18 +329,56 @@ def edit_book_form(request: Request, book_id: int):
         connection.close()
 
 
+        
+# Frontend route to show movie form with existing data
+@app.post("/books/update/{book_id}", response_class=HTMLResponse)
+async def update_book(
+    request: Request,
+    book_id: int,
+    bookname: str = Form(...),
+    author: str = Form(...),
+    quantity: int = Form(...),
+    price: str = Form(...),
+    availability: str = Form(...)
+):
+    connection = get_db_connection()
+    if not connection:
+        raise HTTPException(status_code=500, detail="Database connection error")
+
+    cursor = connection.cursor()
+    try:
+        query = "UPDATE library.books SET bookname = %s, author = %s, quantity = %s, price = %s, availability = %s  WHERE book_id = %s"
+        cursor.execute(query, (bookname, author, quantity, price, availability, book_id))
+        connection.commit()  # Ensures changes are saved in the database
+
+        print(f"Updated book {book_id}: {bookname}, {author}, Quantity: {quantity}, Price: {price}, Availability: {availability}")
+
+        return RedirectResponse(url="/bookslist", status_code=303)
+
+    except Exception as e:
+        print(f"Error updating book: {e}")
+        return HTMLResponse(f"Error: {e}", status_code=500)
+
+    finally:
+        cursor.close()
+        connection.close()
 
 
 @app.get("/books/details", response_class=HTMLResponse)
-def show_book_details(request: Request):
-    books = fetch_books_data_from_db()  # Assuming this fetches book data
+def show_book_details(request: Request , search :str=None):
+    books = fetch_books_data_from_db(search)  # Assuming this fetches book data
     template = templates.get_template("details_book.html")
     return template.render(request=request, books=books)
 
 
 
 @app.post("/books/borrow/{book_id}", response_class=HTMLResponse)
-async def borrow_book(request:Request ,book_id: int):
+async def borrow_book(
+    request:Request ,
+    book_id: int ,
+    username:str = Form(...),  
+    email: str = Form(...)
+):
     if not is_user_user(request):
         raise HTTPException(status_code=403, detail="Permission denied. Only users can edit book details.")
     
@@ -354,7 +395,6 @@ async def borrow_book(request:Request ,book_id: int):
 
         cursor.execute("UPDATE library.books SET quantity = quantity - 1 WHERE book_id = %s", (book_id,))
         connection.commit()
-
         return HTMLResponse(content="<h3>Book borrowed successfully!</h3>")
     except Error as e:
         print(f"Error borrowing book: {e}")

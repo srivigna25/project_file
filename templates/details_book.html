@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>BOOKS</title>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <style>
+            .flex_section{
+                display: flex;
+                flex-direction: column;
+                @media (min-width:1024px){
+                    flex-direction: column;
+                }
+                @media (min-width: 601px) and (max-width: 1024px) {
+                   flex-direction: column;
+                }
+            }
+            .Books_Sec{
+                border: 1px solid #e0e0e0;
+                margin:5px;
+                background-color:thistle;
+                @media (min-width:1024px){
+                    width: 30%;
+                }
+                @media (min-width:601px)and (max-width:1024px){
+                    width: 32%;
+                }
+            }
+            h3{
+                margin-top: 5px;
+                margin-bottom: 10px;
+                border-bottom: 1px solid #000;
+            }
+            h4{
+                margin-top: 5px;
+                margin-bottom: 10px;
+            }
+            .first_Section{
+                display: flex;
+                flex-direction: column;
+                @media (min-width:1024px){
+                    flex-direction: row;
+                }
+                @media (min-width: 601px) and (max-width: 1024px) {
+                   flex-direction: row;
+                }
+            }
+            #searchbar{
+                padding: 10px;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="books_Section">
+            <h1>List of the Books:</h1>
+            <form action="/books/details" method="get">
+                <input id="searchbar" type="text" name="search" placeholder="Search for a book..." required>
+                <button id="searchbar" type="submit">Search</button>
+            </form> <br>
+            <div class="flex_section">
+                % for book in books:
+                <div class="Books_Sec">
+                    <h4>Name of the Book: ${book['bookname']}</h4>
+                    <h4>Author: ${book['author']}</h4>
+                    <h4>Cost of the Book: ${book['price']}</h4>
+                    <h4>Availability: ${book['availability']}</h4>
+                    <h4>Quantity: ${book['quantity']}</h4>
+                    <form action="/books/borrow/${book['book_id']}" method="post" style="display:inline;">
+                        <button type="submit" ${'disabled' if book['availability'] == 'Out of Stock' else ''}>Borrow</button>
+                    </form>
+                </div>
+                % endfor
+            </div>
+        </div>
+    </body>
+
+</html>
