@@ -7,19 +7,26 @@
 </head>
 <body>
 
-    <h3>List of Books :</h3>
-    <form action="/books" method="post">
-        <label for="bookname">Book_name:</label>
-        <input type="text" id="bookname" name="bookname" placeholder="Enter bookname" required><br><br>
-        <label for="author">Author name:</label>
-        <input type="text" id="author" name="author" placeholder="Enter author" required><br><br>
-        <label for="quantity">quantity:</label>
-        <input type="text" id="quantity" name="quantity" placeholder="Enter how many books did you borrowed" required><br><br>
+    <h3>${'Update Existing Book Details' if book else 'Add New Book Details'}</h3>
+    
+    <form action="${ '/books/update/' + str(book['book_id']) if book else '/books' }" method="post">
+        <label for="bookname">Book Name:</label>
+        <input type="text" id="bookname" name="bookname" value="${book['bookname'] if book else '' }" required><br><br>
+
+        <label for="author">Author Name:</label>
+        <input type="text" id="author" name="author" value="${book['author'] if book else '' }" required><br><br>
+
+        <label for="quantity">Quantity:</label>
+        <input type="number" id="quantity" name="quantity" value="${book['quantity'] if book else '' }" required><br><br>
+
         <label for="price">Price:</label>
-        <input type="text" id="price" name="price" placeholder="enter the book price" required><br><br>
+        <input type="text" id="price" name="price" value="${ book['price'] if book else '' }" required><br><br>
+
         <label for="availability">Availability:</label>
-        <input type="text" id="availability" name="availability" placeholder="available/out of stock" required><br><br>
-        <button type="submit">Submit</button>
+        <input type="text" id="availability" name="availability" value="${ book['availability'] if book else '' }" required><br><br>
+
+        <button type="submit">${'Update' if movie else 'Save'}</button>
     </form>
+
 </body>
 </html>
