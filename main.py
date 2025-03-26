@@ -258,6 +258,10 @@ def number_of_books(
 @app.get("/bookslist", response_class=HTMLResponse)
 def users_page(request: Request,search:str = None):
     user_id = get_current_user(request)
+    if not user_id:
+        return RedirectResponse(url="/")
+    if not is_admin_user(request):
+        raise HTTPException(status_code=403, detail="Permission denied. Only admins can add new books.")   
     books = fetch_books_data_from_db(search)
     template = templates.get_template("books.html")
     return template.render(request=request, books=books)
