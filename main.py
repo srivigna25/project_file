@@ -1,3 +1,4 @@
+
 from typing import Union
 from fastapi import FastAPI, Request, Form, Depends, Response
 from fastapi.responses import HTMLResponse, RedirectResponse
@@ -374,18 +375,13 @@ def show_book_details(request: Request , search :str=None):
     template = templates.get_template("details_book.html")
     return template.render(request=request, books=books)
 
-
+21
 
 @app.post("/books/borrow/{book_id}", response_class=HTMLResponse)
 async def borrow_book(
     request:Request ,
-    book_id: int ,
-    username:str = Form(...),  
-    email: str = Form(...)
+    book_id: int 
 ):
-    if not is_user_user(request):
-        raise HTTPException(status_code=403, detail="Permission denied. Only users can edit book details.")
-    
     connection = get_db_connection()
     cursor = connection.cursor(dictionary=True)
     try:
