@@ -48,6 +48,9 @@
             #searchbar{
                 padding: 10px;
             }
+            form{
+                display: inline;
+            }
         </style>
     </head>
     <body>
@@ -68,6 +71,10 @@
                     <form action="/books/borrow/${book['book_id']}" method="post" style="display:inline;">
                         <button type="submit" ${'disabled' if book['availability'] == 'Out of Stock' else ''}>Borrow</button>
                     </form>
+                    <form action="/books/return/${book['book_id']}" method="get">
+                        <button type="submit">Return</button>
+                    </form>
+            </body>
                 </div>
                 % endfor
             </div>

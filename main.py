@@ -392,7 +392,7 @@ async def borrow_book(
 
         if book['quantity'] <= 0:
             raise HTTPException(status_code=400, detail="Book is out of stock")
-
+        
         cursor.execute("UPDATE library.books SET quantity = quantity - 1 WHERE book_id = %s", (book_id,))
         connection.commit()
         return HTMLResponse(content="<h3>Book borrowed successfully!</h3>")
@@ -403,7 +403,26 @@ async def borrow_book(
         cursor.close()
         connection.close()
 
-        
+@app.post("/books/return/{book_id}", response_class=HTMLResponse)
+async def return_book(
+    request: Request,
+    book_id: int,
+    user_id: int =Form(...)
+):
+    connection = get_db_connection()
+    cursor = connection.cursor()
+
+    try:
+        cursor.execute("DELETE FROM library.borrow WHERE user_id = %s AND book_id = %s", (user_id, book_id))
+        cursor.execute("UPDATE library.books SET quantity = quantity + 1 WHERE book_id = %s", (book_id,))
+        connection.commit()
+    except Exception as e:
+        connection.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        cursor.close()
+        connection.close()
+    return {"message": "Book returned successfully"}      
 
 # Only admins can delete books
 @app.post("/books/delete/{book_id}", response_class=HTMLResponse)
