@@ -397,15 +397,20 @@ async def borrow_book(request: Request, book_id: int):
             raise HTTPException(status_code=400, detail="Book is out of stock")
 
         # Insert borrow record
+        borrow_date = datetime.now()
         due_date = datetime.now() + timedelta(days=14)  # 14 days borrowing period
-        cursor.execute("INSERT INTO library.borrow (user_id, book_id, due_date) VALUES (%s, %s, %s)",
-                       (user_id, book_id, due_date))
+        cursor.execute("INSERT INTO library.borrow (user_id, book_id, borrow_Date,due_date) VALUES (%s, %s, %s,%s)",
+                       (user_id, book_id,borrow_date, due_date))
 
         # Reduce book quantity
         cursor.execute("UPDATE library.books SET quantity = quantity - 1 WHERE book_id = %s", (book_id,))
+        # Get total books borrowed by user
+        cursor.execute("SELECT COUNT(*) FROM library.borrow WHERE user_id = %s", (user_id,))
+        total_borrowed = cursor.fetchone()["COUNT(*)"]
+
         connection.commit()
 
-        return HTMLResponse(f"<h3>Book borrowed successfully! Due date: {due_date.strftime('%Y-%m-%d')}</h3>")
+        return HTMLResponse(f"<h3>Book borrowed successfully on {borrow_date.strftime('%Y-%m-%d')}! Due date: {due_date.strftime('%Y-%m-%d')}<br>Total books borrowed: {total_borrowed}</h3>")
     
     except Error as e:
         print(f"Error borrowing book: {e}")
