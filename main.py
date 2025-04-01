@@ -1,4 +1,4 @@
-
+from datetime import datetime, timedelta
 from typing import Union
 from fastapi import FastAPI, Request, Form, Depends, Response
 from fastapi.responses import HTMLResponse, RedirectResponse
@@ -220,7 +220,6 @@ def insert_new_movie_category(category: str):
       connection.close()            
 
 # Frontend route to show form for creating data
-# Frontend route to show form for creating data
 @app.get("/books/new", response_class=HTMLResponse)
 def show_books_form(request: Request):
     if not is_admin_user(request):
@@ -375,54 +374,114 @@ def show_book_details(request: Request , search :str=None):
     template = templates.get_template("details_book.html")
     return template.render(request=request, books=books)
 
-21
-
 @app.post("/books/borrow/{book_id}", response_class=HTMLResponse)
-async def borrow_book(
-    request:Request ,
-    book_id: int 
-):
+async def borrow_book(request: Request, book_id: int):
+    session_token = request.cookies.get("session_token")
+    if not session_token:
+        raise HTTPException(status_code=403, detail="User not authenticated.")
+
+    try:
+        user_id = serializer.loads(session_token)  # Correctly extract the user ID
+    except:
+        raise HTTPException(status_code=400, detail="Invalid user ID format.")
+
     connection = get_db_connection()
     cursor = connection.cursor(dictionary=True)
     try:
+        # Check if the book exists and has enough quantity
         cursor.execute("SELECT quantity FROM library.books WHERE book_id = %s", (book_id,))
         book = cursor.fetchone()
         if not book:
             raise HTTPException(status_code=404, detail="Book not found")
-
         if book['quantity'] <= 0:
             raise HTTPException(status_code=400, detail="Book is out of stock")
-        
+
+        # Insert borrow record
+        due_date = datetime.now() + timedelta(days=14)  # 14 days borrowing period
+        cursor.execute("INSERT INTO library.borrow (user_id, book_id, due_date) VALUES (%s, %s, %s)",
+                       (user_id, book_id, due_date))
+
+        # Reduce book quantity
         cursor.execute("UPDATE library.books SET quantity = quantity - 1 WHERE book_id = %s", (book_id,))
         connection.commit()
-        return HTMLResponse(content="<h3>Book borrowed successfully!</h3>")
+
+        return HTMLResponse(f"<h3>Book borrowed successfully! Due date: {due_date.strftime('%Y-%m-%d')}</h3>")
+    
     except Error as e:
         print(f"Error borrowing book: {e}")
         raise HTTPException(status_code=500, detail="Error borrowing book")
+
     finally:
         cursor.close()
         connection.close()
 
+
 @app.post("/books/return/{book_id}", response_class=HTMLResponse)
-async def return_book(
-    request: Request,
-    book_id: int,
-    user_id: int =Form(...)
-):
+def return_book(request: Request, book_id: int):
+    session_token = request.cookies.get("session_token")
+    if not session_token:
+        raise HTTPException(status_code=403, detail="User not authenticated.")
+
+    try:
+        user_id = serializer.loads(session_token)  # Extract user ID
+    except:
+        raise HTTPException(status_code=400, detail="Invalid user ID format.")
+
     connection = get_db_connection()
     cursor = connection.cursor()
 
     try:
-        cursor.execute("DELETE FROM library.borrow WHERE user_id = %s AND book_id = %s", (user_id, book_id))
+        # Check if the user actually borrowed the book
+        cursor.execute("SELECT * FROM library.borrow WHERE book_id = %s AND user_id = %s AND return_date IS NULL",
+                       (book_id, user_id))
+        borrow_record = cursor.fetchone()
+        if not borrow_record:
+            raise HTTPException(status_code=400, detail="No active borrow record found.")
+
+        # Update return date
+        return_date = datetime.now()
+        cursor.execute("UPDATE library.borrow SET return_date = %s WHERE book_id = %s AND user_id = %s",
+                       (return_date, book_id, user_id))
+
+        # Increase book quantity
         cursor.execute("UPDATE library.books SET quantity = quantity + 1 WHERE book_id = %s", (book_id,))
+
+        # Get total books returned by user
+        cursor.execute("SELECT COUNT(*) FROM library.borrow WHERE user_id = %s AND return_date IS NOT NULL", (user_id,))
+        total_returned = cursor.fetchone()[0]
+
         connection.commit()
-    except Exception as e:
-        connection.rollback()
-        raise HTTPException(status_code=500, detail=str(e))
+        return HTMLResponse(f"<h3>Book returned successfully on {return_date.strftime('%Y-%m-%d')}!<br>Total books returned: {total_returned}</h3>")
+
     finally:
         cursor.close()
         connection.close()
-    return {"message": "Book returned successfully"}      
+
+
+
+
+@app.get("/user/borrowed", response_class=HTMLResponse)
+def get_borrowed_books(request: Request):
+    user_id = request.cookies.get("session_token")
+    if not user_id:
+        raise HTTPException(status_code=403, detail="User not authenticated.")
+    
+    connection = get_db_connection()
+    cursor = connection.cursor(dictionary=True)
+    try:
+        cursor.execute("""
+            SELECT books.bookname, books.author, borrow.borrow_date, borrow.due_date, borrow.return_date 
+            FROM borrow 
+            INNER JOIN books ON borrow.book_id = books.book_id
+            WHERE borrow.user_id = %s
+        """, (user_id,))
+        borrowed_books = cursor.fetchall()
+        template = templates.get_template("borrowed_books.html")
+        return template.render(request=request, books=borrowed_books)
+    finally:
+        cursor.close()
+        connection.close()    #explain the code why timedelta is used
+    
 
 # Only admins can delete books
 @app.post("/books/delete/{book_id}", response_class=HTMLResponse)

@@ -71,7 +71,7 @@
                     <form action="/books/borrow/${book['book_id']}" method="post" style="display:inline;">
                         <button type="submit" ${'disabled' if book['availability'] == 'Out of Stock' else ''}>Borrow</button>
                     </form>
-                    <form action="/books/return/${book['book_id']}" method="get">
+                    <form action="/books/return/${book['book_id']}" method="post">
                         <button type="submit">Return</button>
                     </form>
             </body>
@@ -80,5 +80,4 @@
             </div>
         </div>
     </body>
-
 </html>
