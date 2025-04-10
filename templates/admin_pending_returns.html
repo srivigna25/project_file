@@ -1,0 +1,21 @@
+<html>
+    <head>
+        <title>BOOKS</title>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    </head>
+    <body>
+        <h2>Pending Return Requests Approved</h2>
+        <ul>
+            % for item in returns:
+            <li>
+                <strong>${item['username']}</strong> requested to return <em>${item['bookname']}</em>
+                (Borrowed on ${item['borrow_date'].strftime('%Y-%m-%d')})
+                <form action="/admin/approve-return/${item['borrow_id']}" method="post">
+                    <button type="submit">Approve Return</button>
+                </form>
+            </li>  
+            % endfor 
+        </ul>
+    </body>
+</html>
