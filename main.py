@@ -1,4 +1,4 @@
-import overdue 
+import overdue
 from datetime import datetime, timedelta
 from typing import Union
 from fastapi import FastAPI, Request, Form, Depends, Response
@@ -444,27 +444,78 @@ def return_book(request: Request, book_id: int):
         if not borrow_record:
             raise HTTPException(status_code=400, detail="No active borrow record found.")
 
-        # Update return date
-        return_date = datetime.now()
-        cursor.execute("UPDATE library.borrow SET return_date = %s WHERE book_id = %s AND user_id = %s",
-                       (return_date, book_id, user_id))
-
-        # Increase book quantity
-        cursor.execute("UPDATE library.books SET quantity = quantity + 1 WHERE book_id = %s", (book_id,))
-
-        # Get total books returned by user
-        cursor.execute("SELECT COUNT(*) FROM library.borrow WHERE user_id = %s AND return_date IS NOT NULL", (user_id,))
-        total_returned = cursor.fetchone()[0]
+        # Step 2: Mark return request as pending (admin must approve it)
+        cursor.execute("UPDATE library.borrow SET return_approved = FALSE WHERE book_id = %s AND user_id = %s AND return_date IS NULL",
+                       (book_id, user_id))
 
         connection.commit()
-        return HTMLResponse(f"<h3>Book returned successfully on {return_date.strftime('%Y-%m-%d')}!<br>Total books returned: {total_returned}</h3>")
+        return HTMLResponse("<h3>Your return request has been submitted. Waiting for admin approval.</h3>")
 
     finally:
         cursor.close()
         connection.close()
 
 
+from datetime import datetime
 
+@app.get("/admin/pending-returns", response_class=HTMLResponse)
+def view_pending_returns(request: Request):
+    if not is_admin_user(request):
+        raise HTTPException(status_code=403, detail="Admins only.")
+    connection = get_db_connection()
+    cursor = connection.cursor(dictionary=True)
+    try:
+        cursor.execute("""
+            SELECT b.borrow_id, u.username, bk.bookname, b.borrow_date, b.due_date
+            FROM borrow b
+            JOIN users u ON b.user_id = u.user_id
+            JOIN books bk ON b.book_id = bk.book_id
+            WHERE b.return_approved = FALSE AND b.return_date IS NULL
+        """)
+        returns = cursor.fetchall()
+
+        # Convert borrow_date strings to datetime objects
+        for item in returns:
+            if isinstance(item['borrow_date'], str):
+                item['borrow_date'] = datetime.strptime(item['borrow_date'], "%Y-%m-%d %H:%M:%S.%f")
+
+
+        template = templates.get_template("admin_pending_returns.html")
+        return template.render(request=request, returns=returns)
+    finally:
+        cursor.close()
+        connection.close()
+
+
+
+@app.post("/admin/approve-return/{borrow_id}")
+def approve_return(borrow_id: int, request: Request):
+    if not is_admin_user(request):
+        raise HTTPException(status_code=403, detail="Admins only.")
+    
+    connection = get_db_connection()
+    cursor = connection.cursor()
+    try:
+        return_date = datetime.now()
+
+        # Update return_date, approve, increase quantity
+        cursor.execute("""
+            UPDATE borrow 
+            SET return_date = %s, return_approved = TRUE 
+            WHERE borrow_id = %s
+        """, (return_date, borrow_id))
+
+        cursor.execute("""
+            UPDATE books 
+            SET quantity = quantity + 1 
+            WHERE book_id = (SELECT book_id FROM borrow WHERE borrow_id = %s)
+        """, (borrow_id,))
+
+        connection.commit()
+        return RedirectResponse(url="/admin/pending-returns", status_code=303)
+    finally:
+        cursor.close()
+        connection.close()
 
 @app.get("/user/borrowed", response_class=HTMLResponse)
 def get_borrowed_books(request: Request):
