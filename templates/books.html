@@ -17,7 +17,7 @@
         <button id="searchbar" type="submit">Search</button>
     </form> <br>
     <a href="/">Refresh</a> <a href="/books/new">Add New Book </a><br><br>
-       
+    <a href="/admin/pending-returns">Approval for returning Books</a><br><br>
     <table border="1">
         <thead>
             <tr>
@@ -38,9 +38,7 @@
                 <td>${book['quantity']}</td>
                 <td>${book['price']}</td>
                 <td>${book['availability']}</td>
-                <td>
-                    
-                   
+                <td>   
                     <a href="/books/edit/${book['book_id']}">Edit</a>
                    
                     <form action="/books/delete/${book['book_id']}" method="post" style="display:inline;">
