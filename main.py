@@ -72,7 +72,7 @@ def users_data_from_db(order="ASC"):
             connection.close()
 
 #fetching categorires
-def fetch_user_categories(order="ASC"):
+def fetch_user_types(order="ASC"):
     connection = get_db_connection()
     if not connection:
         return {"message": "Database connection not done"}
@@ -92,7 +92,7 @@ def fetch_user_categories(order="ASC"):
 
 
 
-@app.get("/register/form", response_class=HTMLResponse)
+@app.get("/registration/form", response_class=HTMLResponse)
 def get_users(request: Request):
     template = templates.get_template("registration_form.html")
     return template.render(request=request)
@@ -123,20 +123,18 @@ def registeration_form(
 
 
 @app.get("/usersdata", response_class=HTMLResponse)
-def movies_page(request: Request):
+def users_page(request: Request):
     users = users_data_from_db()
     template = templates.get_template("users.html")
     return template.render(request=request, users=users)
 
 @app.get("/",response_class=HTMLResponse)
 def get_login_form(request:Request):
-    categories = fetch_user_categories()
+    categories = fetch_user_types()
     if isinstance(categories, dict) and "message" in categories:
         categories = [] # Ensures empty categories if fetching fails
     template = templates.get_template("login_form.html")
     return template.render(request=request, categories=categories)
-
-
 
 
 @app.post("/login", response_class=HTMLResponse)
@@ -146,10 +144,9 @@ def login_form(
     password: str = Form(...),
     category: str = Form(...),
     other_category: str = Form(None)
-):
-    
+):    
     if category == "other" and other_category:
-        new_category_id = insert_new_movie_category(other_category)
+        new_category_id = insert_new_user_type(other_category)
         category = new_category_id  # Ensure category gets updated correctly
 
     users = authenticate_user(email, password, category)  # Ensure this function returns expected data
@@ -201,7 +198,7 @@ def fetch_books_data_from_db(search=None, order="ASC"):
 
 
 #To insert the new category
-def insert_new_movie_category(category: str):
+def insert_new_user_type(category: str):
   connection = get_db_connection()
   if not connection:
     return {"message": "Database connection not done"}  
@@ -225,7 +222,7 @@ def insert_new_movie_category(category: str):
 def show_books_form(request: Request):
     if not is_admin_user(request):
         raise HTTPException(status_code=403, detail="Permission denied. Only admins can add new books.")
-    categories_data = fetch_user_categories()
+    categories_data = fetch_user_types()
     template = templates.get_template("books_form.html")
     return template.render(request=request, categories=categories_data)
 
@@ -257,7 +254,7 @@ def number_of_books(
 
 
 @app.get("/bookslist", response_class=HTMLResponse)
-def users_page(request: Request,search:str = None):
+def books_list(request: Request,search:str = None):
     user_id = get_current_user(request)
     if not user_id:
         return RedirectResponse(url="/")
@@ -313,7 +310,7 @@ def is_user_user(request: Request):
         connection.close()
 
 
-# Frontend route to show movie form with existing data
+# Frontend route to show user form with existing data
 @app.get("/books/edit/{book_id}", response_class=HTMLResponse)
 def edit_book_form(request: Request, book_id: int):
     if not is_admin_user(request):
@@ -324,7 +321,7 @@ def edit_book_form(request: Request, book_id: int):
       query = f"SELECT * from library.books WHERE book_id={book_id}"
       cursor.execute(query)
       book = cursor.fetchone()
-      categoriesData = fetch_user_categories()
+      categoriesData = fetch_user_types()
       template = templates.get_template("books_form.html")
       return template.render(request=request, book=book ,categories=categoriesData)
     except Error as e:
@@ -335,7 +332,7 @@ def edit_book_form(request: Request, book_id: int):
 
 
         
-# Frontend route to show movie form with existing data
+# Frontend route to show user form with existing data
 @app.post("/books/update/{book_id}", response_class=HTMLResponse)
 async def update_book(
     request: Request,
@@ -377,6 +374,8 @@ def show_book_details(request: Request , search :str=None):
 
 @app.post("/books/borrow/{book_id}", response_class=HTMLResponse)
 async def borrow_book(request: Request, book_id: int):
+    if not is_user_user(request):
+        raise HTTPException(status_code=403, detail="Permission denied. Only Users can borrow Books.")
     session_token = request.cookies.get("session_token")
     if not session_token:
         raise HTTPException(status_code=403, detail="User not authenticated.")
@@ -424,6 +423,8 @@ async def borrow_book(request: Request, book_id: int):
 
 @app.post("/books/return/{book_id}", response_class=HTMLResponse)
 def return_book(request: Request, book_id: int):
+    if not is_user_user(request):
+        raise HTTPException(status_code=403, detail="Permission denied. Only Users can return Books.")
     session_token = request.cookies.get("session_token")
     if not session_token:
         raise HTTPException(status_code=403, detail="User not authenticated.")
@@ -450,13 +451,11 @@ def return_book(request: Request, book_id: int):
 
         connection.commit()
         return HTMLResponse("<h3>Your return request has been submitted. Waiting for admin approval.</h3>")
-
     finally:
         cursor.close()
         connection.close()
 
 
-from datetime import datetime
 
 @app.get("/admin/pending-returns", response_class=HTMLResponse)
 def view_pending_returns(request: Request):
@@ -485,7 +484,6 @@ def view_pending_returns(request: Request):
     finally:
         cursor.close()
         connection.close()
-
 
 
 @app.post("/admin/approve-return/{borrow_id}")
