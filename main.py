@@ -35,14 +35,14 @@ def get_db_connection():
         print(f"Database Connection Error: {e}")
         raise HTTPException(status_code=500, detail="Database connection error")
 
-def authenticate_user(email: str, password: str , user_type:str):
+def authenticate_user(email: str, password: str ):
     connection = get_db_connection()   
     if not connection:
         print("Database connection failed")
         return None
     try:
         cursor = connection.cursor(dictionary=True)
-        cursor.execute("SELECT * FROM library.users WHERE email=%s AND password=%s AND user_type=%s" ,(email, password,user_type))
+        cursor.execute("SELECT * FROM library.users WHERE email=%s AND password=%s" ,(email, password))
         user = cursor.fetchone()
         return user
     except Error as e:
@@ -93,9 +93,12 @@ def fetch_user_types(order="ASC"):
 
 
 @app.get("/registration/form", response_class=HTMLResponse)
-def get_users(request: Request):
+def get_registeration_form(request: Request):
+    categories = fetch_user_types()
+    if isinstance(categories, dict) and "message" in categories:
+        categories = [] # Ensures empty categories if fetching fails
     template = templates.get_template("registration_form.html")
-    return template.render(request=request)
+    return template.render(request=request,categories=categories)
 
 
 @app.post("/registration",response_class=HTMLResponse)
@@ -104,16 +107,20 @@ def registeration_form(
     username:str =Form(...),
     email:str = Form(...),
     password:str = Form(...),
-    user_type:str = Form(...)
+    category: str = Form(...),
+    other_category: str = Form(None)
 ):
+    if category == "other" and other_category:
+        new_category_id = insert_new_user_type(other_category)
+        category = new_category_id  # Ensure category gets updated correctly
     connection = get_db_connection()
     cursor = connection.cursor()
     try:
         query = "INSERT INTO library.users(username, email, password , user_type) VALUES (%s, %s, %s , %s)"
-        cursor.execute(query, (username, email, password, user_type))
+        cursor.execute(query,(username, email, password, category))
         connection.commit()
         template = templates.get_template("success.html")
-        return template.render(request=request, username=username, email=email, password=password , user_type=user_type)
+        return template.render(request=request, username=username, email=email, password=password , user_type=category)
     except mysql.connector.Error as e:
         print(f"Error: {e}")
         raise HTTPException(status_code=500, detail="Error inserting data into the database")
@@ -129,12 +136,9 @@ def users_page(request: Request):
     return template.render(request=request, users=users)
 
 @app.get("/",response_class=HTMLResponse)
-def get_login_form(request:Request):
-    categories = fetch_user_types()
-    if isinstance(categories, dict) and "message" in categories:
-        categories = [] # Ensures empty categories if fetching fails
+def get_login_form(request:Request,error: bool = False):
     template = templates.get_template("login_form.html")
-    return template.render(request=request, categories=categories)
+    return template.render(request=request , error = error)
 
 
 @app.post("/login", response_class=HTMLResponse)
@@ -142,15 +146,9 @@ def login_form(
     request: Request,
     email: str = Form(...),
     password: str = Form(...),
-    category: str = Form(...),
-    other_category: str = Form(None)
+
 ):    
-    if category == "other" and other_category:
-        new_category_id = insert_new_user_type(other_category)
-        category = new_category_id  # Ensure category gets updated correctly
-
-    users = authenticate_user(email, password, category)  # Ensure this function returns expected data
-
+    users = authenticate_user(email, password)  # Ensure this function returns expected data
     if users and isinstance(users, dict) and 'user_type' in users:
         session_token = serializer.dumps(users.get('user_id', ''))
         user_type = users.get("user_type", "").strip().lower()
@@ -162,6 +160,8 @@ def login_form(
         )
         response.set_cookie(key="session_token", value=session_token, httponly=True, secure=True)
         return response
+    if not users:
+        return RedirectResponse(url="/?error=true", status_code=303)
     return RedirectResponse(url="/", status_code=303)
     
 
@@ -259,7 +259,7 @@ def books_list(request: Request,search:str = None):
     if not user_id:
         return RedirectResponse(url="/")
     if not is_admin_user(request):
-        raise HTTPException(status_code=403, detail="Permission denied. Only admins can add new books.")   
+        return RedirectResponse(url="/")  
     books = fetch_books_data_from_db(search)
     template = templates.get_template("books.html")
     return template.render(request=request, books=books)
@@ -343,6 +343,8 @@ async def update_book(
     price: str = Form(...),
     availability: str = Form(...)
 ):
+    if not is_admin_user(request):
+        raise HTTPException(status_code=403, detail="Permission denied. Only admins can edit book details.")
     connection = get_db_connection()
     if not connection:
         raise HTTPException(status_code=500, detail="Database connection error")
@@ -368,14 +370,14 @@ async def update_book(
 
 @app.get("/books/details", response_class=HTMLResponse)
 def show_book_details(request: Request , search :str=None):
+    if not is_user_user(request):
+        return RedirectResponse(url="/bookslist", status_code=303)
     books = fetch_books_data_from_db(search)  # Assuming this fetches book data
     template = templates.get_template("details_book.html")
     return template.render(request=request, books=books)
 
 @app.post("/books/borrow/{book_id}", response_class=HTMLResponse)
 async def borrow_book(request: Request, book_id: int):
-    if not is_user_user(request):
-        raise HTTPException(status_code=403, detail="Permission denied. Only Users can borrow Books.")
     session_token = request.cookies.get("session_token")
     if not session_token:
         raise HTTPException(status_code=403, detail="User not authenticated.")

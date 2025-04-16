@@ -4,6 +4,27 @@
     <title>Registration Form</title>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        .other_category_wrapper {
+            display: none;
+        }
+
+        .other_category_wrapper.show {
+            display: block;
+        }
+    </style>
+    <script>
+        function toggleOtherCategory() {
+            var categoryDropdown = document.getElementById('category');
+            var otherCategoryWrapper = document.getElementById('other_category_wrapper');
+            
+            if (categoryDropdown.value === 'other') {
+                otherCategoryWrapper.style.display = 'block';
+            } else {
+                otherCategoryWrapper.style.display = 'none';
+            }
+        }
+    </script>
 </head>
 <body>
 
@@ -15,9 +36,17 @@
         <input type="email" id="email" name="email" placeholder="Enter Email" required><br><br>
         <label for="password">Password:</label>
         <input type="password" id="password" name="password" placeholder="Enter Password" required><br><br>
-        <label for="user_type">user_type:</label>
-        <input type="text" id="user_type" name="user_type" placeholder="Enter user type" required><br><br>   
-        <button type="submit">Submit</button>
+        <label for="category">Category:</label>
+        <select id="category" name="category" required onchange="toggleOtherCategory()">
+            % for category in categories:
+            <option value="${category['id']}">${category['category']}</option>
+            % endfor
+            <option value="other">Other</option>
+        </select><br><br>    
+        <div id="other_category_wrapper" style="display:none;">
+            <input type="text" id="other_category" name="other_category" placeholder="Enter other category">
+        </div>
+        <button>Register</button>
     </form>
 </body>
 </html>

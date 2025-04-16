@@ -18,8 +18,9 @@
                 }
             }
             .Books_Sec{
-                border: 1px solid #e0e0e0;
+                border: 1px solid #000;
                 margin:5px;
+                padding: 5px;
                 background-color:thistle;
                 @media (min-width:1024px){
                     width: 30%;
@@ -27,6 +28,25 @@
                 @media (min-width:601px)and (max-width:1024px){
                     width: 32%;
                 }
+            }
+            .head{
+                display: flex;
+                justify-content: space-between;
+                background-color: #000;
+                align-items: center;
+                margin-bottom: 15px;
+            }
+            .logout{
+                text-decoration: none;
+                color: #fff;
+                display: flex;
+                font-size: 20px;
+                margin-right: 20px;
+                justify-content: center;
+            }
+            h1{
+                margin: 10px;
+                color: white;
             }
             h3{
                 margin-top: 5px;
@@ -57,7 +77,10 @@
     </head>
     <body>
         <div class="books_Section">
-            <h1>List of the Books:</h1>
+            <div class="head">
+                <h1>List of the Books:</h1> 
+                <a class="logout" href="/logout" class="button">logout</a>
+            </div>
             <form action="/books/details" method="get">
                 <input id="searchbar" type="text" name="search" placeholder="Search for a book..." required>
                 <button id="searchbar" type="submit">Search</button>
@@ -70,8 +93,11 @@
                     <h4>Cost of the Book: ${book['price']}</h4>
                     <h4>Availability: ${book['availability']}</h4>
                     <h4>Quantity: ${book['quantity']}</h4>
+                    % if book['quantity'] == 0 or book['availability'] == 'Out of Stock':
+                        <p style="color:red;"><strong>This book is currently unavailable.</strong></p>
+                    % endif
                     <form action="/books/borrow/${book['book_id']}" method="post" style="display:inline;">
-                        <button type="submit" ${'disabled' if book['availability'] == 'Out of Stock' else ''}>Borrow</button>
+                        <button type="submit" ${'disabled' if book['availability'] == 'Out of Stock' or book['quantity'] == 0 else ''}>Borrow</button>
                     </form>
                     <form action="/books/return/${book['book_id']}" method="post">
                         <button type="submit">Return</button>

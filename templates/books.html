@@ -5,49 +5,95 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>USERS</title>
     <style>
+        .books_section{
+            display: flex;
+            flex-direction: column;
+        }
+        h1{
+            margin-top: 10px;
+            margin-bottom: 10px;
+        }
+        .links{
+            display: flex;
+            margin-bottom: 15px;
+            justify-content: space-between;
+            background-color: black;
+            padding: 10px;
+        }
+        .link{
+            color: #fff;
+            text-decoration: none;
+        }
         #searchbar{
             padding: 10px;
+        }
+        .buttons{
+            display: flex;
+            flex-direction: row;
+            justify-content: space-evenly;
+            margin: 5px;
+            padding: 5px;
+        }
+        .edit_button{
+            text-decoration: none;
+            color: #000;
+        }
+        .logout{
+            text-decoration: none;
+            color: #fff;
+            background-color: blueviolet;
+            padding: 10px;
+            width: 200px;
+            margin-top: 10px;
+            border-radius: 5px;
+            display: flex;
+            justify-content: center;
         }
     </style>
 </head>
 <body>
+    <div class="books_section">
     <h1>BOOKS</h1>
-    <form action="/bookslist" method="get">
-        <input id="searchbar" type="text" name="search" placeholder="Search for a book..." required>
-        <button id="searchbar" type="submit">Search</button>
-    </form> <br>
-    <a href="/">Refresh</a> <a href="/books/new">Add New Book </a><br><br>
-    <a href="/admin/pending-returns">Approval for returning Books</a><br><br>
-    <table border="1">
-        <thead>
-            <tr>
-                <th>book_id</th>
-                <th>bookname</th>
-                <th>author</th>
-                <th>quantity</th>
-                <th>price</th>
-                <th>availability</th>
-            </tr>
-        </thead>
-        <tbody>
-            % for book in books:
-            <tr>
-                <td>${book['book_id']}</td>
-                <td>${book['bookname']}</td>
-                <td>${book['author']}</td>
-                <td>${book['quantity']}</td>
-                <td>${book['price']}</td>
-                <td>${book['availability']}</td>
-                <td>   
-                    <a href="/books/edit/${book['book_id']}">Edit</a>
-                   
-                    <form action="/books/delete/${book['book_id']}" method="post" style="display:inline;">
-                        <button type="submit">Delete</button>
-                    </form>
-                </td>
-            </tr>
-            % endfor
-        </tbody>
-    </table>
+        <div class="links">
+            <a class="link"  href="/">Refresh</a> 
+            <a  class="link" href="/books/new">Add New Book </a>]
+            <a class="link"  href="/admin/pending-returns">Approval for returning Books</a>
+        </div>
+        <form action="/bookslist" method="get">
+            <input id="searchbar" type="text" name="search" placeholder="Search for a book..." required>
+            <button id="searchbar" type="submit">Search</button>
+        </form> <br>
+        <table border="1">
+            <thead>
+                <tr>
+                    <th>book_id</th>
+                    <th>bookname</th>
+                    <th>author</th>
+                    <th>quantity</th>
+                    <th>price</th>
+                    <th>availability</th>
+                </tr>
+            </thead>
+            <tbody>
+                % for book in books:
+                <tr>
+                    <td>${book['book_id']}</td>
+                    <td>${book['bookname']}</td>
+                    <td>${book['author']}</td>
+                    <td>${book['quantity']}</td>
+                    <td>${book['price']}</td>
+                    <td>${book['availability']}</td>
+                    <td class="buttons">   
+                        <a class="edit_button" href="/books/edit/${book['book_id']}">Edit</a>
+                        <form action="/books/delete/${book['book_id']}" method="post" style="display:inline;">
+                            <button type="submit">Delete</button>
+                        </form>
+                    </td>
+                </tr>
+                % endfor
+            </tbody>
+        </table>
+        <a class="logout" href="/logout" class="button">logout</a>
+    </div>
 </body>
 </html>
