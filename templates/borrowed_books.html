@@ -1,3 +1,5 @@
+
+
 <!DOCTYPE html>
 <html>
 <head>
@@ -18,8 +20,8 @@
     </style>
 </head>                                    
 <body>
-    <h2>Your Borrowed Books</h2>
-    <table>
+    <h2>Borrowed Books</h2>
+<table>
         <tr>
             <th>User ID</th>
             <th>Book Name</th>
@@ -30,12 +32,12 @@
         </tr>
         % for book in books :
         <tr>
-            <td>${users.get('user_id','N/A')}</td>
+            <td>${book.get('user_id','N/A')}</td>
             <td>${book.get('bookname','N/A')}</td>
             <td>${book.get('author','N/A')}</td>
-            <td>${borrow.get('borrow_date','N/A')}</td>
-            <td>${borrow.get('due_date' ,'N/A')}</td>
-            <td>${borrow.get('return_date','N/A') }</td>
+            <td>${book.get('borrow_date','N/A')}</td>
+            <td>${book.get('due_date' ,'N/A')}</td>
+            <td>${book.get('return_date','N/A') }</td>
         </tr>
         % endfor 
     </table>

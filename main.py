@@ -528,7 +528,6 @@ def get_borrowed_books(request: Request):
         raise HTTPException(status_code=403, detail="User not authenticated.")
     
 
-
     if session_token:
         try:
             # Decrypt the session_token to get the user_id
@@ -549,13 +548,16 @@ def get_borrowed_books(request: Request):
     connection = get_db_connection()
     cursor = connection.cursor(dictionary=True)
     try:
+        if not is_admin_user(request):
+            return RedirectResponse(url="/books/details", status_code=303)
+        # Get all borrowed books
         cursor.execute("""
-            SELECT books.bookname, books.author, borrow.borrow_date, borrow.due_date, borrow.return_date, users.user_id
+            SELECT users.user_id, books.bookname, books.author, 
+                   borrow.borrow_date, borrow.due_date, borrow.return_date
             FROM library.borrow
-            INNER JOIN library.books ON library.borrow.book_id = library.books.book_id
-            INNER JOIN library.users ON library.borrow.user_id = library.users.user_id
-            WHERE borrow.user_id = %s 
-        """, (user_id,))
+            JOIN library.books ON borrow.book_id = books.book_id
+            JOIN library.users ON borrow.user_id = users.user_id
+        """)
         borrowed_books = cursor.fetchall()
         print("Borrowed books:", borrowed_books)  # Debugging print
     finally:
