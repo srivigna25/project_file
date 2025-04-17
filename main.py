@@ -7,14 +7,16 @@ from fastapi.exceptions import HTTPException
 from mako.lookup import TemplateLookup
 import mysql.connector
 from mysql.connector import Error
-from itsdangerous import URLSafeSerializer
+from itsdangerous import URLSafeSerializer, BadSignature, SignatureExpired
 import secrets
   
 app = FastAPI()
 
 #secret key for session handling
 SECRET_KEY = secrets.token_hex(16)
-serializer = URLSafeSerializer(SECRET_KEY)
+print("the secret key is:")  
+print(SECRET_KEY)
+serializer = URLSafeSerializer("python") 
 
 #define Mako html templates path
 templates = TemplateLookup(directories=["templates"])
@@ -519,26 +521,49 @@ def approve_return(borrow_id: int, request: Request):
 
 @app.get("/user/borrowed", response_class=HTMLResponse)
 def get_borrowed_books(request: Request):
-    user_id = request.cookies.get("session_token")
-    if not user_id:
+    session_token = request.cookies.get("session_token")
+    print("session token is:")
+    print(session_token)
+    if not session_token:
         raise HTTPException(status_code=403, detail="User not authenticated.")
+    
+
+
+    if session_token:
+        try:
+            # Decrypt the session_token to get the user_id
+            user_id = serializer.loads(session_token)
+            print("user_id is")
+            print(user_id)
+        except SignatureExpired:
+            print("Session token has expired.")
+        except BadSignature:
+            print("Invalid session token.")            
+        except Exception as e:
+            print(f"Error decrypting session token: {e}")
+            
+    user_id = serializer.loads(session_token)   
+    print("the user_id is ")
+    print(user_id)
     
     connection = get_db_connection()
     cursor = connection.cursor(dictionary=True)
     try:
         cursor.execute("""
-            SELECT books.bookname, books.author, borrow.borrow_date, borrow.due_date, borrow.return_date 
-            FROM borrow 
-            INNER JOIN books ON borrow.book_id = books.book_id
-            WHERE borrow.user_id = %s
+            SELECT books.bookname, books.author, borrow.borrow_date, borrow.due_date, borrow.return_date, users.user_id
+            FROM library.borrow
+            INNER JOIN library.books ON library.borrow.book_id = library.books.book_id
+            INNER JOIN library.users ON library.borrow.user_id = library.users.user_id
+            WHERE borrow.user_id = %s 
         """, (user_id,))
         borrowed_books = cursor.fetchall()
-        template = templates.get_template("borrowed_books.html")
-        return template.render(request=request, books=borrowed_books)
+        print("Borrowed books:", borrowed_books)  # Debugging print
     finally:
         cursor.close()
-        connection.close()    #explain the code why timedelta is used
-    
+        connection.close()
+    template = templates.get_template("borrowed_books.html")
+    return template.render(request=request, books=borrowed_books)
+ 
 
 # Only admins can delete books
 @app.post("/books/delete/{book_id}", response_class=HTMLResponse)

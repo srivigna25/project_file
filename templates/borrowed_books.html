@@ -16,28 +16,28 @@
             background-color: #f2f2f2;
         }
     </style>
-</head>
+</head>                                    
 <body>
     <h2>Your Borrowed Books</h2>
     <table>
         <tr>
-            <th>user_id</th>
+            <th>User ID</th>
             <th>Book Name</th>
             <th>Author</th>
             <th>Borrowed On</th>
             <th>Due Date</th>
             <th>Return Date</th>
         </tr>
-        % for book in books:
+        % for book in books :
         <tr>
-            <td>${book['user_id']}</td>
-            <td>${book['bookname']}</td>
-            <td>${book['author']}</td>
-            <td>${book['borrow_date'].strftime('%Y-%m-%d')}</td>  <!--  #Converts the borrow date into a YYYY-MM-DD format. -->
-            <td>${book['due_date'].strftime('%Y-%m-%d')}</td> <!--  #Converts the due date into a YYYY-MM-DD format. -->
-            <td>${book['return_date'].strftime('%Y-%m-%d') if book['return_date'] else 'Not Returned'}</td>  <!-- If return_date exists, format it.  or  Otherwise, display "Not Returned." -->
+            <td>${users.get('user_id','N/A')}</td>
+            <td>${book.get('bookname','N/A')}</td>
+            <td>${book.get('author','N/A')}</td>
+            <td>${borrow.get('borrow_date','N/A')}</td>
+            <td>${borrow.get('due_date' ,'N/A')}</td>
+            <td>${borrow.get('return_date','N/A') }</td>
         </tr>
-        % endfor
+        % endfor 
     </table>
 </body>
 </html>
