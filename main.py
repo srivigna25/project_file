@@ -14,8 +14,6 @@ app = FastAPI()
 
 #secret key for session handling
 SECRET_KEY = secrets.token_hex(16)
-print("the secret key is:")  
-print(SECRET_KEY)
 serializer = URLSafeSerializer("python") 
 
 #define Mako html templates path
@@ -316,7 +314,7 @@ def is_user_user(request: Request):
 @app.get("/books/edit/{book_id}", response_class=HTMLResponse)
 def edit_book_form(request: Request, book_id: int):
     if not is_admin_user(request):
-        raise HTTPException(status_code=403, detail="Permission denied. Only admins can edit book details.")
+        return RedirectResponse(url="/")
     connection = get_db_connection()
     cursor = connection.cursor(dictionary=True)
     try:
@@ -346,7 +344,7 @@ async def update_book(
     availability: str = Form(...)
 ):
     if not is_admin_user(request):
-        raise HTTPException(status_code=403, detail="Permission denied. Only admins can edit book details.")
+        return RedirectResponse(url="/")
     connection = get_db_connection()
     if not connection:
         raise HTTPException(status_code=500, detail="Database connection error")
@@ -408,6 +406,12 @@ async def borrow_book(request: Request, book_id: int):
 
         # Reduce book quantity
         cursor.execute("UPDATE library.books SET quantity = quantity - 1 WHERE book_id = %s", (book_id,))
+        # Check updated quantity and update availability accordingly
+        cursor.execute("SELECT quantity FROM library.books WHERE book_id = %s", (book_id,))
+        updated_book = cursor.fetchone()
+        updated_quantity = updated_book['quantity']
+        new_status = 'Out of Stock' if updated_quantity == 0 else 'Available'
+        cursor.execute("UPDATE library.books SET availability = %s WHERE book_id = %s", (new_status, book_id))
         # Get total books borrowed by user
         cursor.execute("SELECT COUNT(*) FROM library.borrow WHERE user_id = %s", (user_id,))
         total_borrowed = cursor.fetchone()["COUNT(*)"]
@@ -464,7 +468,7 @@ def return_book(request: Request, book_id: int):
 @app.get("/admin/pending-returns", response_class=HTMLResponse)
 def view_pending_returns(request: Request):
     if not is_admin_user(request):
-        raise HTTPException(status_code=403, detail="Admins only.")
+        return RedirectResponse(url="/")
     connection = get_db_connection()
     cursor = connection.cursor(dictionary=True)
     try:
@@ -493,7 +497,7 @@ def view_pending_returns(request: Request):
 @app.post("/admin/approve-return/{borrow_id}")
 def approve_return(borrow_id: int, request: Request):
     if not is_admin_user(request):
-        raise HTTPException(status_code=403, detail="Admins only.")
+        return RedirectResponse(url="/")
     
     connection = get_db_connection()
     cursor = connection.cursor()
@@ -523,11 +527,9 @@ def approve_return(borrow_id: int, request: Request):
 def get_borrowed_books(request: Request):
     session_token = request.cookies.get("session_token")
     print("session token is:")
-    print(session_token)
     if not session_token:
         raise HTTPException(status_code=403, detail="User not authenticated.")
     
-
     if session_token:
         try:
             # Decrypt the session_token to get the user_id
@@ -541,9 +543,7 @@ def get_borrowed_books(request: Request):
         except Exception as e:
             print(f"Error decrypting session token: {e}")
             
-    user_id = serializer.loads(session_token)   
-    print("the user_id is ")
-    print(user_id)
+    user_id = serializer.loads(session_token)
     
     connection = get_db_connection()
     cursor = connection.cursor(dictionary=True)
@@ -571,7 +571,7 @@ def get_borrowed_books(request: Request):
 @app.post("/books/delete/{book_id}", response_class=HTMLResponse)
 async def delete_book(book_id: int, request: Request):
     if not is_admin_user(request):
-        raise HTTPException(status_code=403, detail="Permission denied. Only admins can edit book details.")
+        return RedirectResponse(url="/")
     
     connection = get_db_connection()
     cursor = connection.cursor()

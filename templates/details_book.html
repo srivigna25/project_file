@@ -91,13 +91,15 @@
                     <h4>Name of the Book: ${book['bookname']}</h4>
                     <h4>Author: ${book['author']}</h4>
                     <h4>Cost of the Book: ${book['price']}</h4>
-                    <h4>Availability: ${book['availability']}</h4>
                     <h4>Quantity: ${book['quantity']}</h4>
-                    % if book['quantity'] == 0 or book['availability'] == 'Out of Stock':
-                        <p style="color:red;"><strong>This book is currently unavailable.</strong></p>
+                        % if book['quantity'] == 0 or book['availability'] == 'Out of Stock':
+                            <h4>Availability: <span style="color:red;">Out of Stock</span></h4>
+                        % else:
+                            <h4>Availability: <span style="color:#000;">Available</span></h4>
                     % endif
+
                     <form action="/books/borrow/${book['book_id']}" method="post" style="display:inline;">
-                        <button type="submit" ${'disabled' if book['availability'] == 'Out of Stock' or book['quantity'] == 0 else ''}>Borrow</button>
+                        <button type="submit" ${'disabled' if book['quantity'] == 0 else ''}>Borrow</button>
                     </form>
                     <form action="/books/return/${book['book_id']}" method="post">
                         <button type="submit">Return</button>
