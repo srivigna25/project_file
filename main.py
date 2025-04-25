@@ -135,13 +135,20 @@ def users_page(request: Request):
     template = templates.get_template("users.html")
     return template.render(request=request, users=users)
 
+
 @app.get("/",response_class=HTMLResponse)
+def get_login_form(request:Request,error: bool = False):
+    template = templates.get_template("home_page.html")
+    return template.render(request=request , error = error)
+
+
+@app.get("/login",response_class=HTMLResponse)
 def get_login_form(request:Request,error: bool = False):
     template = templates.get_template("login_form.html")
     return template.render(request=request , error = error)
 
 
-@app.post("/login", response_class=HTMLResponse)
+@app.post("/login/form", response_class=HTMLResponse)
 def login_form(
     request: Request,
     email: str = Form(...),
@@ -161,8 +168,8 @@ def login_form(
         response.set_cookie(key="session_token", value=session_token, httponly=True, secure=True)
         return response
     if not users:
-        return RedirectResponse(url="/?error=true", status_code=303)
-    return RedirectResponse(url="/", status_code=303)
+        return RedirectResponse(url="/login?error=true", status_code=303)
+    return RedirectResponse(url="/login", status_code=303)
     
 
 
@@ -526,7 +533,6 @@ def approve_return(borrow_id: int, request: Request):
 @app.get("/user/borrowed", response_class=HTMLResponse)
 def get_borrowed_books(request: Request):
     session_token = request.cookies.get("session_token")
-    print("session token is:")
     if not session_token:
         raise HTTPException(status_code=403, detail="User not authenticated.")
     
@@ -548,16 +554,17 @@ def get_borrowed_books(request: Request):
     connection = get_db_connection()
     cursor = connection.cursor(dictionary=True)
     try:
-        if not is_admin_user(request):
-            return RedirectResponse(url="/books/details", status_code=303)
+        if not is_user_user(request):
+            return RedirectResponse(url="/bookslist", status_code=303)
         # Get all borrowed books
         cursor.execute("""
-            SELECT users.user_id, books.bookname, books.author, 
-                   borrow.borrow_date, borrow.due_date, borrow.return_date
+            SELECT borrow.user_id, books.bookname, books.author, 
+                borrow.borrow_date, borrow.due_date, borrow.return_date, borrow.penalty
             FROM library.borrow
             JOIN library.books ON borrow.book_id = books.book_id
-            JOIN library.users ON borrow.user_id = users.user_id
-        """)
+            WHERE borrow.user_id = %s
+        """, (user_id,))
+
         borrowed_books = cursor.fetchall()
         print("Borrowed books:", borrowed_books)  # Debugging print
     finally:
