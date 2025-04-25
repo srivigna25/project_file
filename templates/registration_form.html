@@ -5,12 +5,52 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <style>
+        body{
+            margin:0;
+        }
+        .registration_form{
+            border: 4px solid;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin: 5px auto;
+            height: 530px;
+            width: 700px;
+        }
+        .heading{
+            margin: 0;
+            padding: 20px;
+            padding-left: 5px;
+            font-size: 25px;
+            border-bottom: 3px solid;
+            width: 656px;
+        }
         .other_category_wrapper {
             display: none;
         }
 
         .other_category_wrapper.show {
             display: block;
+        }
+        .input{
+            padding: 10px;
+        }
+        .input_name{
+            font-size: 20px;
+            margin-left: 5px;
+        }
+        .form{
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-start;
+            width: 550px;
+            margin:15px;
+        }
+        button{
+            padding: 10px;
+            display: flex;
+            align-items: center;
+            margin-bottom: 10px;
         }
     </style>
     <script>
@@ -27,26 +67,27 @@
     </script>
 </head>
 <body>
-
-    <h3>Registration Form:</h3>
-    <form action="/registration" method="post">
-        <label for="username">Username:</label>
-        <input type="text" id="username" name="username" placeholder="Enter Username" required><br><br>
-        <label for="email">Email:</label>
-        <input type="email" id="email" name="email" placeholder="Enter Email" required><br><br>
-        <label for="password">Password:</label>
-        <input type="password" id="password" name="password" placeholder="Enter Password" required><br><br>
-        <label for="category">Category:</label>
-        <select id="category" name="category" required onchange="toggleOtherCategory()">
-            % for category in categories:
-            <option value="${category['id']}">${category['category']}</option>
-            % endfor
-            <option value="other">Other</option>
-        </select><br><br>    
-        <div id="other_category_wrapper" style="display:none;">
-            <input type="text" id="other_category" name="other_category" placeholder="Enter other category">
-        </div>
-        <button>Register</button>
-    </form>
+    <div class="registration_form">
+        <h3 class="heading">Registration Form:</h3>
+        <form class="form" action="/registration" method="post">
+            <label class="input_name" for="username">Username:</label>
+            <input class="input" type="text" id="username" name="username" placeholder="Enter Username" required><br><br>
+            <label class="input_name" for="email">Email:</label>
+            <input class="input" type="email" id="email" name="email" placeholder="Enter Email" required><br><br>
+            <label class="input_name" for="password">Password:</label>
+            <input class="input" type="password" id="password" name="password" placeholder="Enter Password" required><br><br>
+            <label class="input_name" for="category">Category:</label>
+            <select class="input" id="category" name="category" required onchange="toggleOtherCategory()">
+                % for category in categories:
+                <option value="${category['id']}">${category['category']}</option>
+                % endfor
+                <option value="other">Other</option>
+            </select><br><br>    
+            <div id="other_category_wrapper" style="display:none;">
+                <input type="text" id="other_category" name="other_category" placeholder="Enter other category">
+            </div>
+            <center><button >Register</button></center>
+        </form>
+    </div>
 </body>
 </html>
