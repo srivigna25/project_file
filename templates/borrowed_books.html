@@ -20,7 +20,7 @@
     </style>
 </head>                                    
 <body>
-    <h2>Borrowed Books</h2>
+    <h2>Your Borrowed Books</h2>
 <table>
         <tr>
             <th>User ID</th>
@@ -29,6 +29,7 @@
             <th>Borrowed On</th>
             <th>Due Date</th>
             <th>Return Date</th>
+            <th>penalty</th>
         </tr>
         % for book in books :
         <tr>
@@ -38,8 +39,11 @@
             <td>${book.get('borrow_date','N/A')}</td>
             <td>${book.get('due_date' ,'N/A')}</td>
             <td>${book.get('return_date','N/A') }</td>
+            <td>₹${book.get('penalty') if book.get('penalty') is not None else 0}</td>
         </tr>
         % endfor 
     </table>
 </body>
 </html>
+
+

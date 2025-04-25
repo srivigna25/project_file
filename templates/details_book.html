@@ -73,12 +73,18 @@
             form{
                 display: inline;
             }
+            .link{
+            color: #fff;
+            text-decoration: none;
+            font-size: 20px;
+            }
         </style>
     </head>
     <body>
         <div class="books_Section">
             <div class="head">
                 <h1>List of the Books:</h1> 
+                <a class="link" href="/user/borrowed"> Your Borrowed Books</a>
                 <a class="logout" href="/logout" class="button">logout</a>
             </div>
             <form action="/books/details" method="get">
