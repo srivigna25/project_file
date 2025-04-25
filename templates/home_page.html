@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html>
+    <head>
+		<meta  charset="UTF-8">
+		<meta  name="viewport"  content="width=device-width, initial-scale=1.0">
+        <style>
+            body{
+                margin: 0;
+            }
+            .head{
+                font-size:30px;
+                font-style: italic;
+                text-decoration: none;
+                color: white;
+            }
+            .home{
+                display: flex;
+                flex-direction: column;
+                justify-content: space-evenly;
+                background-color: black;
+                padding: 20px;
+                @media (min-width:1024px){
+                    flex-direction: row;
+                }
+                @media (min-width: 601px) and (max-width: 1024px) {
+                    flex-direction: column;
+                }
+            }
+            .login{
+                align-items: center;
+                display: flex;
+            }
+            .registration{
+                align-items: center;
+                display: flex;
+                margin-top: 15px;
+                @media (min-width:1024px){
+                    margin-top: 0;
+                }
+                @media (min-width: 601px) and (max-width: 1024px) {
+                    margin-top: 15px;
+                }
+            }
+            button{
+                padding: 8px;
+                display: flex;
+                align-items: center;
+            }
+        </style>
+	</head>
+    <body>
+        <div class="home">
+            <h1 class="head">Welcome to the Library Management System</h1>
+            <a class="login" href="/login"><button>Login</button></a>
+            <a class="registration" href="/registration/form"><button>Register</button></a>
+        </div>
+        
+    </body>
+</html>
