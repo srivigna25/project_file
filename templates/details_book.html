@@ -4,6 +4,7 @@
         <title>BOOKS</title>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <link rel="stylesheet" href="/static/css/flex.css">
         <style>
             .flex_section{
                 display: flex;
@@ -29,23 +30,19 @@
                     width: 32%;
                 }
             }
-            .head{
-                display: flex;
-                justify-content: space-between;
-                background-color: #000;
-                align-items: center;
-                margin-bottom: 15px;
-            }
+            
             .logout{
                 text-decoration: none;
                 color: #fff;
                 display: flex;
                 font-size: 20px;
                 margin-right: 20px;
+                margin-top: 10px;
                 justify-content: center;
             }
             h1{
-                margin: 10px;
+                margin-bottom: 10px;
+                margin-top:0 ;
                 color: white;
             }
             h3{
@@ -73,11 +70,7 @@
             form{
                 display: inline;
             }
-            .link{
-            color: #fff;
-            text-decoration: none;
-            font-size: 20px;
-            }
+
         </style>
     </head>
     <body>
@@ -98,12 +91,6 @@
                     <h4>Author: ${book['author']}</h4>
                     <h4>Cost of the Book: ${book['price']}</h4>
                     <h4>Quantity: ${book['quantity']}</h4>
-                        % if book['quantity'] == 0 or book['availability'] == 'Out of Stock':
-                            <h4>Availability: <span style="color:red;">Out of Stock</span></h4>
-                        % else:
-                            <h4>Availability: <span style="color:#000;">Available</span></h4>
-                    % endif
-
                     <form action="/books/borrow/${book['book_id']}" method="post" style="display:inline;">
                         <button type="submit" ${'disabled' if book['quantity'] == 0 else ''}>Borrow</button>
                     </form>
