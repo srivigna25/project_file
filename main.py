@@ -1,3 +1,4 @@
+from fastapi.staticfiles import StaticFiles
 import overdue
 from datetime import datetime, timedelta
 from typing import Union
@@ -11,10 +12,12 @@ from itsdangerous import URLSafeSerializer, BadSignature, SignatureExpired
 import secrets
   
 app = FastAPI()
+app.mount("/static", StaticFiles(directory="static"), name="static")
+
 
 #secret key for session handling
 SECRET_KEY = secrets.token_hex(16)
-serializer = URLSafeSerializer("python") 
+serializer = URLSafeSerializer("python")
 
 #define Mako html templates path
 templates = TemplateLookup(directories=["templates"])
@@ -162,7 +165,7 @@ def login_form(
         print(f"DEBUG: User type is '{user_type}'")
 
         response = RedirectResponse(
-            url="/bookslist" if user_type == "admin" or user_type == "1"  else "/books/details",
+            url="/bookslist" if user_type in ["admin","librarian" ,"1", "7"]  else "/books/details",
             status_code=303
         )
         response.set_cookie(key="session_token", value=session_token, httponly=True, secure=True)
@@ -227,7 +230,7 @@ def insert_new_user_type(category: str):
 # Frontend route to show form for creating data
 @app.get("/books/new", response_class=HTMLResponse)
 def show_books_form(request: Request):
-    if not is_admin_user(request):
+    if not is_admin_or_librarian(request):
         raise HTTPException(status_code=403, detail="Permission denied. Only admins can add new books.")
     categories_data = fetch_user_types()
     template = templates.get_template("books_form.html")
@@ -240,19 +243,18 @@ def number_of_books(
     bookname:str =Form(...),
     author:str = Form(...),
     quantity:str = Form(...),
-    price:str = Form(...),
-    availability:str = Form(...)
+    price:str = Form(...)
 ):
-    if not is_admin_user(request):
+    if not is_admin_or_librarian(request):
         raise HTTPException(status_code=403, detail="Permission denied. Only admins can add new books.") 
     connection = get_db_connection()
     cursor = connection.cursor()
     try:
-        query = "INSERT INTO library.books(bookname,author,quantity,price,availability) VALUES (%s, %s, %s ,%s ,%s)"
-        cursor.execute(query, (bookname,author,quantity,price,availability))
+        query = "INSERT INTO library.books(bookname,author,quantity,price) VALUES (%s, %s, %s ,%s )"
+        cursor.execute(query, (bookname,author,quantity,price))
         connection.commit()
         template = templates.get_template("books_success.html")
-        return template.render(request=request,bookname=bookname , author=author , quantity=quantity , price=price , availability=availability )
+        return template.render(request=request,bookname=bookname , author=author , quantity=quantity , price=price )
     except Error as e:
         print(f"Error: {e}")
     finally:
@@ -265,7 +267,7 @@ def books_list(request: Request,search:str = None):
     user_id = get_current_user(request)
     if not user_id:
         return RedirectResponse(url="/")
-    if not is_admin_user(request):
+    if not is_admin_or_librarian(request):
         return RedirectResponse(url="/")  
     books = fetch_books_data_from_db(search)
     template = templates.get_template("books.html")
@@ -283,7 +285,7 @@ def get_current_user(request: Request):
 
 
 
-def is_admin_user(request: Request):
+def is_admin_or_librarian(request: Request):
     user_id = get_current_user(request)
     if not user_id:
         return False
@@ -291,14 +293,17 @@ def is_admin_user(request: Request):
     connection = get_db_connection()
     cursor = connection.cursor(dictionary=True)
     try:
-        cursor.execute("SELECT categories.category FROM library.users "
-                       "INNER JOIN library.categories ON library.users.user_type = library.categories.id "
-                       "WHERE users.user_id = %s", (user_id,))
+        cursor.execute("""
+            SELECT categories.category FROM library.users 
+            INNER JOIN library.categories ON library.users.user_type = library.categories.id 
+            WHERE users.user_id = %s
+        """, (user_id,))
         user = cursor.fetchone()
-        return user and user['category'].strip().lower() == 'admin'
+        return user and user['category'].strip().lower() in ['admin', 'librarian']
     finally:
         cursor.close()
         connection.close()
+
 
 def is_user_user(request: Request):
     user_id = get_current_user(request)
@@ -320,7 +325,7 @@ def is_user_user(request: Request):
 # Frontend route to show user form with existing data
 @app.get("/books/edit/{book_id}", response_class=HTMLResponse)
 def edit_book_form(request: Request, book_id: int):
-    if not is_admin_user(request):
+    if not is_admin_or_librarian(request):
         return RedirectResponse(url="/")
     connection = get_db_connection()
     cursor = connection.cursor(dictionary=True)
@@ -347,10 +352,9 @@ async def update_book(
     bookname: str = Form(...),
     author: str = Form(...),
     quantity: int = Form(...),
-    price: str = Form(...),
-    availability: str = Form(...)
+    price: str = Form(...)
 ):
-    if not is_admin_user(request):
+    if not is_admin_or_librarian(request):
         return RedirectResponse(url="/")
     connection = get_db_connection()
     if not connection:
@@ -358,11 +362,11 @@ async def update_book(
 
     cursor = connection.cursor()
     try:
-        query = "UPDATE library.books SET bookname = %s, author = %s, quantity = %s, price = %s, availability = %s  WHERE book_id = %s"
-        cursor.execute(query, (bookname, author, quantity, price, availability, book_id))
+        query = "UPDATE library.books SET bookname = %s, author = %s, quantity = %s, price = %s  WHERE book_id = %s"
+        cursor.execute(query, (bookname, author, quantity, price,  book_id))
         connection.commit()  # Ensures changes are saved in the database
 
-        print(f"Updated book {book_id}: {bookname}, {author}, Quantity: {quantity}, Price: {price}, Availability: {availability}")
+        print(f"Updated book {book_id}: {bookname}, {author}, Quantity: {quantity}, Price: {price}")
 
         return RedirectResponse(url="/bookslist", status_code=303)
 
@@ -376,12 +380,14 @@ async def update_book(
 
 
 @app.get("/books/details", response_class=HTMLResponse)
-def show_book_details(request: Request , search :str=None):
-    if not is_user_user(request):
-        return RedirectResponse(url="/bookslist", status_code=303)
-    books = fetch_books_data_from_db(search)  # Assuming this fetches book data
+def show_book_details(request: Request, search: str = None):
+    if not is_admin_or_librarian(request) and not is_user_user(request):
+        return RedirectResponse(url="/", status_code=303)
+
+    books = fetch_books_data_from_db(search)
     template = templates.get_template("details_book.html")
     return template.render(request=request, books=books)
+
 
 @app.post("/books/borrow/{book_id}", response_class=HTMLResponse)
 async def borrow_book(request: Request, book_id: int):
@@ -413,12 +419,7 @@ async def borrow_book(request: Request, book_id: int):
 
         # Reduce book quantity
         cursor.execute("UPDATE library.books SET quantity = quantity - 1 WHERE book_id = %s", (book_id,))
-        # Check updated quantity and update availability accordingly
-        cursor.execute("SELECT quantity FROM library.books WHERE book_id = %s", (book_id,))
-        updated_book = cursor.fetchone()
-        updated_quantity = updated_book['quantity']
-        new_status = 'Out of Stock' if updated_quantity == 0 else 'Available'
-        cursor.execute("UPDATE library.books SET availability = %s WHERE book_id = %s", (new_status, book_id))
+        
         # Get total books borrowed by user
         cursor.execute("SELECT COUNT(*) FROM library.borrow WHERE user_id = %s", (user_id,))
         total_borrowed = cursor.fetchone()["COUNT(*)"]
@@ -474,7 +475,7 @@ def return_book(request: Request, book_id: int):
 
 @app.get("/admin/pending-returns", response_class=HTMLResponse)
 def view_pending_returns(request: Request):
-    if not is_admin_user(request):
+    if not is_admin_or_librarian(request):
         return RedirectResponse(url="/")
     connection = get_db_connection()
     cursor = connection.cursor(dictionary=True)
@@ -503,7 +504,7 @@ def view_pending_returns(request: Request):
 
 @app.post("/admin/approve-return/{borrow_id}")
 def approve_return(borrow_id: int, request: Request):
-    if not is_admin_user(request):
+    if is_user_user(request):
         return RedirectResponse(url="/")
     
     connection = get_db_connection()
@@ -540,8 +541,6 @@ def get_borrowed_books(request: Request):
         try:
             # Decrypt the session_token to get the user_id
             user_id = serializer.loads(session_token)
-            print("user_id is")
-            print(user_id)
         except SignatureExpired:
             print("Session token has expired.")
         except BadSignature:
@@ -554,19 +553,28 @@ def get_borrowed_books(request: Request):
     connection = get_db_connection()
     cursor = connection.cursor(dictionary=True)
     try:
-        if not is_user_user(request):
-            return RedirectResponse(url="/bookslist", status_code=303)
-        # Get all borrowed books
-        cursor.execute("""
-            SELECT borrow.user_id, books.bookname, books.author, 
-                borrow.borrow_date, borrow.due_date, borrow.return_date, borrow.penalty
-            FROM library.borrow
-            JOIN library.books ON borrow.book_id = books.book_id
-            WHERE borrow.user_id = %s
-        """, (user_id,))
-
+        if is_admin_or_librarian(request):
+            # Admin/librarian sees all borrowed records
+            cursor.execute("""
+                SELECT borrow.user_id, users.username, books.bookname, books.author, 
+                       borrow.borrow_date, borrow.due_date, borrow.return_date, borrow.penalty
+                FROM library.borrow
+                JOIN library.books ON borrow.book_id = books.book_id
+                JOIN library.users ON borrow.user_id = users.user_id
+                ORDER BY borrow.borrow_date DESC
+            """)
+        else:
+            # Normal user sees only their records
+            cursor.execute("""
+                SELECT borrow.user_id, books.bookname, books.author, 
+                       borrow.borrow_date, borrow.due_date, borrow.return_date, borrow.penalty
+                FROM library.borrow
+                JOIN library.books ON borrow.book_id = books.book_id
+                WHERE borrow.user_id = %s
+                ORDER BY borrow.borrow_date DESC
+            """, (user_id,))
+        
         borrowed_books = cursor.fetchall()
-        print("Borrowed books:", borrowed_books)  # Debugging print
     finally:
         cursor.close()
         connection.close()
@@ -577,7 +585,7 @@ def get_borrowed_books(request: Request):
 # Only admins can delete books
 @app.post("/books/delete/{book_id}", response_class=HTMLResponse)
 async def delete_book(book_id: int, request: Request):
-    if not is_admin_user(request):
+    if not is_admin_or_librarian(request):
         return RedirectResponse(url="/")
     
     connection = get_db_connection()

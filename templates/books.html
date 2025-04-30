@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>USERS</title>
+    <link rel="stylesheet" href="/static/css/flex.css">
     <style>
         .books_section{
             display: flex;
@@ -13,17 +14,7 @@
             margin-top: 10px;
             margin-bottom: 10px;
         }
-        .links{
-            display: flex;
-            margin-bottom: 15px;
-            justify-content: space-between;
-            background-color: black;
-            padding: 10px;
-        }
-        .link{
-            color: #fff;
-            text-decoration: none;
-        }
+
         #searchbar{
             padding: 10px;
         }
@@ -54,9 +45,10 @@
 <body>
     <div class="books_section">
     <h1>BOOKS</h1>
-        <div class="links">
+        <div class="head">
             <a class="link"  href="/">Refresh</a> 
-            <a  class="link" href="/books/new">Add New Book </a>
+            <a  class="link" href="/books/new">Add New Book </a>\
+            <a class="link" href="/user/borrowed">Borrowed books</a>
             <a class="link"  href="/admin/pending-returns">Approval for returning Books</a>
         </div>
         <form action="/bookslist" method="get">
@@ -71,7 +63,6 @@
                     <th>author</th>
                     <th>quantity</th>
                     <th>price</th>
-                    <th>availability</th>
                 </tr>
             </thead>
             <tbody>
@@ -82,7 +73,6 @@
                     <td>${book['author']}</td>
                     <td>${book['quantity']}</td>
                     <td>${book['price']}</td>
-                    <td>${book['availability']}</td>
                     <td class="buttons">   
                         <a class="edit_button" href="/books/edit/${book['book_id']}">Edit</a>
                         <form action="/books/delete/${book['book_id']}" method="post" style="display:inline;">

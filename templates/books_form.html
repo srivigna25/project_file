@@ -70,9 +70,6 @@
   
             <label for="price">Price:</label>
             <input class="input_box"  type="text" id="price" name="price" value="${ book['price'] if book else '' }" required><br><br>
-  
-            <label for="availability">Availability:</label>
-            <input class="input_box"  type="text" id="availability" name="availability" value="${ book['availability'] if book else '' }" required><br><br>
 
             <button type="submit">${'Update' if book else 'Save'}</button>
         </form>
