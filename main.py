@@ -1,5 +1,7 @@
 from fastapi.staticfiles import StaticFiles
 import overdue
+from fastapi import APIRouter
+from overdue import send_overdue_notifications, update_penalties_for_overdue_books
 from datetime import datetime, timedelta
 from typing import Union
 from fastapi import FastAPI, Request, Form, Depends, Response
@@ -554,6 +556,7 @@ def get_borrowed_books(request: Request):
     cursor = connection.cursor(dictionary=True)
     try:
         if is_admin_or_librarian(request):
+            current_user_type = 'admin' or 'librarian'
             # Admin/librarian sees all borrowed records
             cursor.execute("""
                 SELECT borrow.user_id, users.username, books.bookname, books.author, 
@@ -564,6 +567,7 @@ def get_borrowed_books(request: Request):
                 ORDER BY borrow.borrow_date DESC
             """)
         else:
+            current_user_type = 'user'
             # Normal user sees only their records
             cursor.execute("""
                 SELECT borrow.user_id, books.bookname, books.author, 
@@ -579,8 +583,23 @@ def get_borrowed_books(request: Request):
         cursor.close()
         connection.close()
     template = templates.get_template("borrowed_books.html")
-    return template.render(request=request, books=borrowed_books)
+    return template.render(request=request, books=borrowed_books, user_type=current_user_type)
  
+
+
+@app.post("/send-overdue-emails", response_class=HTMLResponse)
+def send_overdue_emails(request: Request):
+    if not is_admin_or_librarian(request):
+        raise HTTPException(status_code=403, detail="Unauthorized")
+
+    update_penalties_for_overdue_books()
+    send_overdue_notifications()
+
+    template = templates.get_template("email_success.html")
+    return template.render(request=request, message="Overdue email notifications sent successfully.")
+
+
+
 
 # Only admins can delete books
 @app.post("/books/delete/{book_id}", response_class=HTMLResponse)

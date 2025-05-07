@@ -30,6 +30,7 @@
             <th>Due Date</th>
             <th>Return Date</th>
             <th>penalty</th>
+            <th>Status</th>
         </tr>
         % for book in books :
         <tr>
@@ -40,9 +41,40 @@
             <td>${book.get('due_date' ,'N/A')}</td>
             <td>${book.get('return_date','N/A') }</td>
             <td>₹${book.get('penalty') if book.get('penalty') is not None else 0}</td>
+            % if user_type in ['admin', 'librarian']:
+            <td>
+                % if book.get('return_date') is None:
+                <form method="post" action="/send-overdue-emails">
+                    <button type="submit">Send Emails</button>
+                </form>
+                
+                % else:
+                  <span>Returned</span>
+                % endif
+              </td>
+            % endif
         </tr>
         % endfor 
     </table>
+    <script>
+        function sendOverdueEmails() {
+            fetch("/send-overdue-emails", {
+                method: "POST"
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error("Unauthorized or failed request.");
+                }
+                return response.json();
+            })
+            .then(data => {
+                alert(data.message);
+            })
+            .catch(error => {
+                alert("Error sending overdue emails: " + error);
+            });
+        }
+        </script>        
 </body>
 </html>
 
