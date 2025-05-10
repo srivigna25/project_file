@@ -9,17 +9,29 @@
         body {
             font-family: Arial, sans-serif;
             margin: 20px;
+            background-color: #292975;
+            margin: 200px auto;
+            width: 350px;
+            @media (min-width:1024px){
+                width: 500px;
+            }
+            @media (min-width: 601px) and (max-width: 1024px) {
+                width: 500px;
+            }
         }
         .login_form{
-            background-color: aliceblue;
+            background-color: #e5f3e9;
             padding: 10px;
-            border: 1px solid #000;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
         }
         h3 {
             text-transform: uppercase;
             font-size: 15px;
         }
-        input, select, button {
+        input, select{
             padding: 8px;
             margin-top: 5px;
         }
@@ -30,6 +42,11 @@
         input {
             padding: 8px;
             margin: 5px;
+        }
+        button{
+            padding: 8px;
+            margin-top: 5px;
+            margin-left: 70px;
         }
     </style>
 
